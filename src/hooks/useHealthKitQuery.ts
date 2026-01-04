@@ -3,9 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   QuantityTypeIdentifier,
   CategoryTypeIdentifier,
-  QuantitySample as QuantitySampleRecord,
-  CategorySample as CategorySampleRecord,
-  WorkoutSample as WorkoutSampleRecord,
   StatisticsResult,
   StatisticsAggregation,
 } from '../AppleHealth.types';
@@ -29,15 +26,17 @@ export interface UseHealthKitQueryConfig {
   skip?: boolean;
 }
 
-export interface UseHealthKitQueryResult<T> {
-  /** The fetched data */
-  data: T[] | null;
+export interface UseHealthKitQueryResult {
+  /** The fetched sample objects with methods like delete() */
+  data: HealthKitSample[] | null;
   /** Loading state */
   isLoading: boolean;
   /** Error if the query failed */
   error: Error | null;
   /** Refetch the data */
   refetch: () => Promise<void>;
+  /** Delete a sample and remove it from the data array */
+  deleteSample: (sample: HealthKitSample) => Promise<void>;
 }
 
 /**
@@ -48,10 +47,12 @@ export interface UseHealthKitQueryResult<T> {
  * - Releases cached samples on unmount or refetch
  * - Handles loading/error states
  *
+ * Returns sample objects with methods like `delete()` and `toJSON()`.
+ *
  * @example
  * ```tsx
  * function StepCounter() {
- *   const { data, isLoading, error } = useHealthKitQuery({
+ *   const { data, isLoading, deleteSample } = useHealthKitQuery({
  *     type: 'stepCount',
  *     startDate: weekAgo,
  *     endDate: now,
@@ -59,17 +60,21 @@ export interface UseHealthKitQueryResult<T> {
  *   });
  *
  *   if (isLoading) return <Text>Loading...</Text>;
- *   if (error) return <Text>Error: {error.message}</Text>;
  *
  *   const total = data?.reduce((sum, s) => sum + s.value, 0) ?? 0;
- *   return <Text>{total} steps</Text>;
+ *   return (
+ *     <View>
+ *       <Text>{total} steps</Text>
+ *       {data?.map(sample => (
+ *         <Button key={sample.uuid} onPress={() => deleteSample(sample)} />
+ *       ))}
+ *     </View>
+ *   );
  * }
  * ```
  */
-export function useHealthKitQuery<
-  T extends QuantitySampleRecord | CategorySampleRecord | WorkoutSampleRecord = QuantitySampleRecord
->(config: UseHealthKitQueryConfig): UseHealthKitQueryResult<T> {
-  const [data, setData] = useState<T[] | null>(null);
+export function useHealthKitQuery(config: UseHealthKitQueryConfig): UseHealthKitQueryResult {
+  const [data, setData] = useState<HealthKitSample[] | null>(null);
   const [isLoading, setIsLoading] = useState(!config.skip);
   const [error, setError] = useState<Error | null>(null);
 
@@ -114,7 +119,7 @@ export function useHealthKitQuery<
       queryRef.current = query;
 
       const results = await query.execute();
-      setData(results as T[]);
+      setData(results);
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
       setData(null);
@@ -122,6 +127,11 @@ export function useHealthKitQuery<
       setIsLoading(false);
     }
   }, [configKey]);
+
+  const deleteSample = useCallback(async (sample: HealthKitSample) => {
+    await sample.delete();
+    setData((prev) => prev?.filter((s) => s.uuid !== sample.uuid) ?? null);
+  }, []);
 
   // Fetch on mount and when config changes
   useEffect(() => {
@@ -138,7 +148,7 @@ export function useHealthKitQuery<
     };
   }, [fetch, config.skip]);
 
-  return { data, isLoading, error, refetch: fetch };
+  return { data, isLoading, error, refetch: fetch, deleteSample };
 }
 
 export interface UseHealthKitStatisticsConfig {
@@ -364,118 +374,7 @@ export function useHealthKitStatisticsCollection(
   return { data, isLoading, error, refetch: fetch };
 }
 
-export interface UseHealthKitSamplesResult {
-  /** The fetched sample objects with methods like delete() */
-  data: HealthKitSample[] | null;
-  /** Loading state */
-  isLoading: boolean;
-  /** Error if the query failed */
-  error: Error | null;
-  /** Refetch the data */
-  refetch: () => Promise<void>;
-  /** Delete a sample and remove it from the data array */
-  deleteSample: (sample: HealthKitSample) => Promise<void>;
-}
-
 /**
- * React hook for querying HealthKit samples as shared objects.
- *
- * Unlike `useHealthKitQuery`, this returns sample objects with methods
- * like `delete()` that operate on the native HKSample.
- *
- * @example
- * ```tsx
- * function ManageSamples() {
- *   const { data, deleteSample } = useHealthKitSamples({
- *     type: 'stepCount',
- *     startDate: weekAgo,
- *     limit: 50,
- *   });
- *
- *   return (
- *     <FlatList
- *       data={data}
- *       renderItem={({ item }) => (
- *         <View>
- *           <Text>{item.value} {item.unit}</Text>
- *           <Button title="Delete" onPress={() => deleteSample(item)} />
- *         </View>
- *       )}
- *     />
- *   );
- * }
- * ```
+ * @deprecated Use `useHealthKitQuery` instead. It now returns sample objects with `delete()` method.
  */
-export function useHealthKitSamples(
-  config: UseHealthKitQueryConfig
-): UseHealthKitSamplesResult {
-  const [data, setData] = useState<HealthKitSample[] | null>(null);
-  const [isLoading, setIsLoading] = useState(!config.skip);
-  const [error, setError] = useState<Error | null>(null);
-
-  const queryRef = useRef<HealthKitQuery | null>(null);
-
-  const configKey = useMemo(
-    () =>
-      JSON.stringify({
-        type: config.type,
-        kind: config.kind,
-        startDate: config.startDate?.toString(),
-        endDate: config.endDate?.toString(),
-        limit: config.limit,
-        ascending: config.ascending,
-      }),
-    [config.type, config.kind, config.startDate, config.endDate, config.limit, config.ascending]
-  );
-
-  const fetch = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      if (queryRef.current) {
-        queryRef.current.release();
-      }
-
-      const kind = config.kind ?? (config.type === 'workout' ? 'workout' : 'quantity');
-      const query = new HealthKitQuery()
-        .type(config.type, kind)
-        .dateRange(config.startDate, config.endDate)
-        .ascending(config.ascending ?? false);
-
-      if (config.limit !== undefined) {
-        query.limit(config.limit);
-      }
-
-      queryRef.current = query;
-
-      const results = await query.executeSamples();
-      setData(results);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-      setData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [configKey]);
-
-  const deleteSample = useCallback(async (sample: HealthKitSample) => {
-    await sample.delete();
-    setData((prev) => prev?.filter((s) => s.uuid !== sample.uuid) ?? null);
-  }, []);
-
-  useEffect(() => {
-    if (!config.skip) {
-      fetch();
-    }
-
-    return () => {
-      if (queryRef.current) {
-        queryRef.current.release();
-        queryRef.current = null;
-      }
-    };
-  }, [fetch, config.skip]);
-
-  return { data, isLoading, error, refetch: fetch, deleteSample };
-}
+export const useHealthKitSamples = useHealthKitQuery;

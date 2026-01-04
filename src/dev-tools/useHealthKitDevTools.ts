@@ -48,7 +48,7 @@ export function useHealthKitDevTools() {
               if (options?.limit) query.limit(options.limit);
               if (options?.ascending !== undefined) query.ascending(options.ascending);
               const samples = await query.execute();
-              sendResult(samples);
+              sendResult(samples.map(s => s.toJSON()));
               break;
             }
 
@@ -60,7 +60,7 @@ export function useHealthKitDevTools() {
               if (options?.limit) query.limit(options.limit);
               if (options?.ascending !== undefined) query.ascending(options.ascending);
               const samples = await query.execute();
-              sendResult(samples);
+              sendResult(samples.map(s => s.toJSON()));
               break;
             }
 
@@ -72,7 +72,7 @@ export function useHealthKitDevTools() {
               if (options?.limit) query.limit(options.limit);
               if (options?.ascending !== undefined) query.ascending(options.ascending);
               const samples = await query.execute();
-              sendResult(samples);
+              sendResult(samples.map(s => s.toJSON()));
               break;
             }
 

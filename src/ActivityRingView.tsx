@@ -30,6 +30,5 @@ export interface ActivityRingViewProps {
  * />
  * ```
  */
-export const ActivityRingView = requireNativeView<ActivityRingViewProps>(
-  "AppleHealth_ActivityRingView"
-);
+export const ActivityRingView =
+  requireNativeView<ActivityRingViewProps>("ActivityRingView");

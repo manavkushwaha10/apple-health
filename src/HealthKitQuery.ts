@@ -3,9 +3,6 @@ import { requireNativeModule } from 'expo';
 import type {
   QuantityTypeIdentifier,
   CategoryTypeIdentifier,
-  QuantitySample as QuantitySampleRecord,
-  CategorySample as CategorySampleRecord,
-  WorkoutSample as WorkoutSampleRecord,
   StatisticsResult,
   StatisticsAggregation,
 } from './AppleHealth.types';
@@ -19,7 +16,6 @@ interface NativeHealthKitQuery {
   setAscending(ascending: boolean): void;
   setAggregations(aggregations: string[]): void;
   setInterval(interval: string): void;
-  execute(): Promise<Record<string, unknown>[]>;
   executeSamples(): Promise<unknown[]>;
   executeStatistics(): Promise<Record<string, unknown> | Record<string, unknown>[]>;
   release(): void;
@@ -61,6 +57,13 @@ export interface HealthKitQueryConfig {
  *   .limit(100);
  *
  * const samples = await query.execute();
+ * const total = samples.reduce((sum, s) => sum + s.value, 0);
+ *
+ * // Delete a sample
+ * await samples[0].delete();
+ *
+ * // Serialize for storage
+ * const json = samples.map(s => s.toJSON());
  * ```
  */
 export class HealthKitQuery {
@@ -161,25 +164,16 @@ export class HealthKitQuery {
   }
 
   /**
-   * Execute the query and return plain object samples.
-   * Use `executeSamples()` if you need sample objects with methods like `delete()`.
+   * Execute the query and return sample objects.
    *
-   * @returns Array of plain sample records
-   */
-  async execute(): Promise<QuantitySampleRecord[] | CategorySampleRecord[] | WorkoutSampleRecord[]> {
-    const results = await this.native.execute();
-    return results as unknown as QuantitySampleRecord[] | CategorySampleRecord[] | WorkoutSampleRecord[];
-  }
-
-  /**
-   * Execute the query and return sample objects with methods.
-   * These are shared objects that maintain a reference to the native HKSample.
+   * Returns shared objects that maintain a reference to the native HKSample,
+   * enabling operations like `delete()`. Use `toJSON()` for serialization.
    *
    * @returns Array of sample objects with `delete()` and `toJSON()` methods
    *
    * @example
    * ```ts
-   * const samples = await query.executeSamples();
+   * const samples = await query.execute();
    * for (const sample of samples) {
    *   if (sample instanceof QuantitySample) {
    *     console.log(`${sample.value} ${sample.unit}`);
@@ -187,9 +181,12 @@ export class HealthKitQuery {
    *   // Delete samples you don't need
    *   await sample.delete();
    * }
+   *
+   * // For serialization
+   * const json = samples.map(s => s.toJSON());
    * ```
    */
-  async executeSamples(): Promise<HealthKitSample[]> {
+  async execute(): Promise<HealthKitSample[]> {
     const natives = await this.native.executeSamples();
     return wrapNativeSamples(natives);
   }

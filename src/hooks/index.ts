@@ -8,12 +8,14 @@ export {
 export type {
   UseHealthKitQueryConfig,
   UseHealthKitQueryResult,
-  UseHealthKitSamplesResult,
   UseHealthKitStatisticsConfig,
   UseHealthKitStatisticsResult,
   UseHealthKitStatisticsCollectionConfig,
   UseHealthKitStatisticsCollectionResult,
 } from './useHealthKitQuery';
+
+/** @deprecated Use `UseHealthKitQueryResult` instead */
+export type { UseHealthKitQueryResult as UseHealthKitSamplesResult } from './useHealthKitQuery';
 
 export { useHealthKitSubscription, useHealthKitAnchor } from './useHealthKitSubscription';
 
