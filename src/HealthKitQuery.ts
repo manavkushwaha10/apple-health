@@ -28,7 +28,10 @@ interface AppleHealthModuleWithQuery {
 
 const AppleHealthModule = requireNativeModule<AppleHealthModuleWithQuery>('AppleHealth');
 
-export type QueryKind = 'quantity' | 'category' | 'workout' | 'statistics' | 'statisticsCollection';
+export type QueryKind = 'quantity' | 'category' | 'workout' | 'statistics';
+
+/** @internal Used internally for collection queries */
+type InternalQueryKind = QueryKind | 'statisticsCollection';
 
 export type IntervalUnit = 'hour' | 'day' | 'week' | 'month' | 'year';
 
@@ -68,7 +71,9 @@ export interface HealthKitQueryConfig {
  */
 export class HealthKitQuery {
   private native: NativeHealthKitQuery;
-  private queryKind: QueryKind = 'quantity';
+  private queryKind: InternalQueryKind = 'quantity';
+  private typeIdentifier: string = '';
+  private hasInterval: boolean = false;
 
   constructor(config?: HealthKitQueryConfig) {
     this.native = new AppleHealthModule.HealthKitQuery();
@@ -103,12 +108,13 @@ export class HealthKitQuery {
    * Set the HealthKit type to query.
    *
    * @param identifier - The type identifier (e.g., 'stepCount', 'heartRate')
-   * @param kind - Query kind: 'quantity', 'category', 'workout', 'statistics', 'statisticsCollection'
+   * @param kind - Query kind: 'quantity', 'category', 'workout', 'statistics'
    */
   type(
     identifier: QuantityTypeIdentifier | CategoryTypeIdentifier | 'workout',
     kind?: QueryKind
   ): this {
+    this.typeIdentifier = identifier;
     this.queryKind = kind ?? (identifier === 'workout' ? 'workout' : 'quantity');
     this.native.setType(identifier, this.queryKind);
     return this;
@@ -156,9 +162,13 @@ export class HealthKitQuery {
   }
 
   /**
-   * Set the time interval for statistics collection queries.
+   * Set the time interval for statistics queries.
+   * When set, the query returns an array of results bucketed by the interval.
+   *
+   * @param unit - Time unit: 'hour', 'day', 'week', 'month', 'year'
    */
   interval(unit: IntervalUnit): this {
+    this.hasInterval = true;
     this.native.setInterval(unit);
     return this;
   }
@@ -194,9 +204,31 @@ export class HealthKitQuery {
   /**
    * Execute a statistics query.
    *
-   * @returns Statistics result (single or array for collection queries)
+   * Returns a single result, or an array if `interval()` was called.
+   *
+   * @example
+   * ```ts
+   * // Single statistics result
+   * const stats = await new HealthKitQuery()
+   *   .type('stepCount', 'statistics')
+   *   .dateRange(weekAgo, now)
+   *   .aggregations(['sum', 'average'])
+   *   .executeStatistics();
+   *
+   * // Time-bucketed results (array)
+   * const daily = await new HealthKitQuery()
+   *   .type('stepCount', 'statistics')
+   *   .dateRange(weekAgo, now)
+   *   .aggregations(['sum'])
+   *   .interval('day')
+   *   .executeStatistics();
+   * ```
    */
   async executeStatistics(): Promise<StatisticsResult | StatisticsResult[]> {
+    // Update the native kind based on whether interval is set
+    if (this.queryKind === 'statistics' && this.hasInterval) {
+      this.native.setType(this.typeIdentifier, 'statisticsCollection');
+    }
     const results = await this.native.executeStatistics();
     return results as unknown as StatisticsResult | StatisticsResult[];
   }

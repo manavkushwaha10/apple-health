@@ -124,6 +124,7 @@ public final class QuantitySampleObject: HealthKitSample {
 
   override func toJSON() -> [String: Any] {
     var result: [String: Any] = [
+      "__typename": "QuantitySample",
       "uuid": uuid,
       "quantityType": quantityType,
       "value": value,
@@ -181,6 +182,7 @@ public final class CategorySampleObject: HealthKitSample {
 
   override func toJSON() -> [String: Any] {
     var result: [String: Any] = [
+      "__typename": "CategorySample",
       "uuid": uuid,
       "categoryType": categoryType,
       "value": value,
@@ -252,6 +254,7 @@ public final class WorkoutSampleObject: HealthKitSample {
 
   override func toJSON() -> [String: Any] {
     var result: [String: Any] = [
+      "__typename": "WorkoutSample",
       "uuid": uuid,
       "workoutActivityType": workoutActivityType,
       "duration": duration,

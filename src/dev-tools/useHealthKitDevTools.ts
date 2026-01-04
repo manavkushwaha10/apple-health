@@ -90,7 +90,7 @@ export function useHealthKitDevTools() {
             case "queryStatisticsCollection": {
               const options = payload.options as StatisticsOptions;
               const query = new HealthKitQuery()
-                .type(payload.type as QuantityTypeIdentifier, "statisticsCollection")
+                .type(payload.type as QuantityTypeIdentifier, "statistics")
                 .dateRange(options?.startDate, options?.endDate)
                 .aggregations(payload.aggregations as StatisticsAggregation[])
                 .interval(options.interval);

@@ -18,7 +18,7 @@ export {
   CategorySample,
   WorkoutSample,
 } from "./HealthKitSample";
-export type { HealthKitSample } from "./HealthKitSample";
+export type { HealthKitSample, SampleTypename } from "./HealthKitSample";
 
 // Subscription and anchor shared objects
 export { HealthKitSubscription, HealthKitAnchor } from "./HealthKitSubscription";
@@ -30,20 +30,15 @@ export { HealthKitSampleBuilder } from "./HealthKitSampleBuilder";
 // React hooks
 export {
   useHealthKitQuery,
-  useHealthKitSamples,
   useHealthKitStatistics,
-  useHealthKitStatisticsCollection,
   useHealthKitSubscription,
   useHealthKitAnchor,
 } from "./hooks";
 export type {
   UseHealthKitQueryConfig,
   UseHealthKitQueryResult,
-  UseHealthKitSamplesResult,
   UseHealthKitStatisticsConfig,
   UseHealthKitStatisticsResult,
-  UseHealthKitStatisticsCollectionConfig,
-  UseHealthKitStatisticsCollectionResult,
   UseHealthKitSubscriptionConfig,
   UseHealthKitSubscriptionResult,
   UseHealthKitAnchorConfig,

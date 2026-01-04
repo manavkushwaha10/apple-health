@@ -5,6 +5,9 @@ import type {
   DeviceInfo,
 } from "./AppleHealth.types";
 
+/** Sample type discriminator */
+export type SampleTypename = 'QuantitySample' | 'CategorySample' | 'WorkoutSample';
+
 /**
  * Native shared object interface for samples
  */
@@ -44,6 +47,9 @@ interface NativeWorkoutSample extends NativeHealthKitSample {
  */
 export abstract class HealthKitSampleBase {
   protected native: NativeHealthKitSample;
+
+  /** Type discriminator for sample type checking */
+  abstract readonly __typename: SampleTypename;
 
   constructor(native: NativeHealthKitSample) {
     this.native = native;
@@ -103,15 +109,17 @@ export abstract class HealthKitSampleBase {
  *
  * @example
  * ```ts
- * const samples = await query.executeSamples();
+ * const samples = await query.execute();
  * for (const sample of samples) {
- *   console.log(`${sample.value} ${sample.unit} at ${sample.startDate}`);
- *   // Delete a sample
- *   await sample.delete();
+ *   if (sample.__typename === 'QuantitySample') {
+ *     console.log(`${sample.value} ${sample.unit}`);
+ *   }
  * }
  * ```
  */
 export class QuantitySample extends HealthKitSampleBase {
+  readonly __typename = 'QuantitySample' as const;
+
   constructor(native: NativeQuantitySample) {
     super(native);
   }
@@ -146,14 +154,18 @@ export class QuantitySample extends HealthKitSampleBase {
  *
  * @example
  * ```ts
- * const sleepSamples = await query.executeSamples();
- * for (const sample of sleepSamples) {
- *   // Sleep values: 0 = inBed, 1 = asleepUnspecified, 2 = awake, etc.
- *   console.log(`Sleep state: ${sample.value}`);
+ * const samples = await query.execute();
+ * for (const sample of samples) {
+ *   if (sample.__typename === 'CategorySample') {
+ *     // Sleep values: 0 = inBed, 1 = asleepUnspecified, 2 = awake, etc.
+ *     console.log(`Sleep state: ${sample.value}`);
+ *   }
  * }
  * ```
  */
 export class CategorySample extends HealthKitSampleBase {
+  readonly __typename = 'CategorySample' as const;
+
   constructor(native: NativeCategorySample) {
     super(native);
   }
@@ -178,16 +190,20 @@ export class CategorySample extends HealthKitSampleBase {
  *
  * @example
  * ```ts
- * const workouts = await query.executeSamples();
- * for (const workout of workouts) {
- *   console.log(`${workout.workoutActivityType}: ${workout.duration}s`);
- *   if (workout.totalEnergyBurned) {
- *     console.log(`Burned ${workout.totalEnergyBurned} kcal`);
+ * const samples = await query.execute();
+ * for (const sample of samples) {
+ *   if (sample.__typename === 'WorkoutSample') {
+ *     console.log(`${sample.workoutActivityType}: ${sample.duration}s`);
+ *     if (sample.totalEnergyBurned) {
+ *       console.log(`Burned ${sample.totalEnergyBurned} kcal`);
+ *     }
  *   }
  * }
  * ```
  */
 export class WorkoutSample extends HealthKitSampleBase {
+  readonly __typename = 'WorkoutSample' as const;
+
   constructor(native: NativeWorkoutSample) {
     super(native);
   }
@@ -228,11 +244,25 @@ export type HealthKitSample = QuantitySample | CategorySample | WorkoutSample;
  */
 export function wrapNativeSample(native: unknown): HealthKitSample {
   const sample = native as NativeHealthKitSample & {
+    __typename?: SampleTypename;
     quantityType?: string;
     categoryType?: string;
     workoutActivityType?: string;
   };
 
+  // Use __typename discriminator if available
+  if (sample.__typename) {
+    switch (sample.__typename) {
+      case 'QuantitySample':
+        return new QuantitySample(sample as NativeQuantitySample);
+      case 'CategorySample':
+        return new CategorySample(sample as NativeCategorySample);
+      case 'WorkoutSample':
+        return new WorkoutSample(sample as NativeWorkoutSample);
+    }
+  }
+
+  // Fallback to property-based detection for backwards compatibility
   if ("quantityType" in sample && sample.quantityType) {
     return new QuantitySample(sample as NativeQuantitySample);
   }

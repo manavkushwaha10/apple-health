@@ -1,8 +1,6 @@
 export {
   useHealthKitQuery,
-  useHealthKitSamples,
   useHealthKitStatistics,
-  useHealthKitStatisticsCollection,
 } from './useHealthKitQuery';
 
 export type {
@@ -10,12 +8,7 @@ export type {
   UseHealthKitQueryResult,
   UseHealthKitStatisticsConfig,
   UseHealthKitStatisticsResult,
-  UseHealthKitStatisticsCollectionConfig,
-  UseHealthKitStatisticsCollectionResult,
 } from './useHealthKitQuery';
-
-/** @deprecated Use `UseHealthKitQueryResult` instead */
-export type { UseHealthKitQueryResult as UseHealthKitSamplesResult } from './useHealthKitQuery';
 
 export { useHealthKitSubscription, useHealthKitAnchor } from './useHealthKitSubscription';
 

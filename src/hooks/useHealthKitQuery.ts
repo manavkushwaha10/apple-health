@@ -156,6 +156,8 @@ export interface UseHealthKitStatisticsConfig {
   type: QuantityTypeIdentifier;
   /** Aggregation types to compute */
   aggregations: StatisticsAggregation[];
+  /** Time interval for bucketing. When provided, returns an array of results. */
+  interval?: IntervalUnit;
   /** Start of date range */
   startDate?: Date | string;
   /** End of date range */
@@ -164,9 +166,9 @@ export interface UseHealthKitStatisticsConfig {
   skip?: boolean;
 }
 
-export interface UseHealthKitStatisticsResult {
-  /** The statistics result */
-  data: StatisticsResult | null;
+export interface UseHealthKitStatisticsResult<T = StatisticsResult | StatisticsResult[]> {
+  /** The statistics result (single or array when interval is set) */
+  data: T | null;
   /** Loading state */
   isLoading: boolean;
   /** Error if the query failed */
@@ -178,10 +180,13 @@ export interface UseHealthKitStatisticsResult {
 /**
  * React hook for querying HealthKit statistics.
  *
+ * Returns a single result by default, or an array when `interval` is provided.
+ *
  * @example
  * ```tsx
+ * // Single statistics result
  * function WeeklyStats() {
- *   const { data, isLoading } = useHealthKitStatistics({
+ *   const { data } = useHealthKitStatistics({
  *     type: 'stepCount',
  *     aggregations: ['sum', 'average'],
  *     startDate: weekAgo,
@@ -195,103 +200,10 @@ export interface UseHealthKitStatisticsResult {
  *     </View>
  *   );
  * }
- * ```
- */
-export function useHealthKitStatistics(
-  config: UseHealthKitStatisticsConfig
-): UseHealthKitStatisticsResult {
-  const [data, setData] = useState<StatisticsResult | null>(null);
-  const [isLoading, setIsLoading] = useState(!config.skip);
-  const [error, setError] = useState<Error | null>(null);
-
-  const queryRef = useRef<HealthKitQuery | null>(null);
-
-  const configKey = useMemo(
-    () =>
-      JSON.stringify({
-        type: config.type,
-        aggregations: config.aggregations,
-        startDate: config.startDate?.toString(),
-        endDate: config.endDate?.toString(),
-      }),
-    [config.type, config.aggregations, config.startDate, config.endDate]
-  );
-
-  const fetch = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      if (queryRef.current) {
-        queryRef.current.release();
-      }
-
-      const query = new HealthKitQuery()
-        .type(config.type, 'statistics')
-        .dateRange(config.startDate, config.endDate)
-        .aggregations(config.aggregations);
-
-      queryRef.current = query;
-
-      const results = await query.executeStatistics();
-      setData(results as StatisticsResult);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-      setData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [configKey]);
-
-  useEffect(() => {
-    if (!config.skip) {
-      fetch();
-    }
-
-    return () => {
-      if (queryRef.current) {
-        queryRef.current.release();
-        queryRef.current = null;
-      }
-    };
-  }, [fetch, config.skip]);
-
-  return { data, isLoading, error, refetch: fetch };
-}
-
-export interface UseHealthKitStatisticsCollectionConfig {
-  /** The HealthKit quantity type identifier */
-  type: QuantityTypeIdentifier;
-  /** Aggregation types to compute */
-  aggregations: StatisticsAggregation[];
-  /** Time interval for bucketing */
-  interval: IntervalUnit;
-  /** Start of date range */
-  startDate?: Date | string;
-  /** End of date range */
-  endDate?: Date | string;
-  /** Skip initial fetch on mount */
-  skip?: boolean;
-}
-
-export interface UseHealthKitStatisticsCollectionResult {
-  /** Array of statistics results, one per time bucket */
-  data: StatisticsResult[] | null;
-  /** Loading state */
-  isLoading: boolean;
-  /** Error if the query failed */
-  error: Error | null;
-  /** Refetch the data */
-  refetch: () => Promise<void>;
-}
-
-/**
- * React hook for querying HealthKit statistics collections (time-bucketed data).
  *
- * @example
- * ```tsx
+ * // Time-bucketed results (array)
  * function DailySteps() {
- *   const { data, isLoading } = useHealthKitStatisticsCollection({
+ *   const { data } = useHealthKitStatistics({
  *     type: 'stepCount',
  *     aggregations: ['sum'],
  *     interval: 'day',
@@ -310,10 +222,10 @@ export interface UseHealthKitStatisticsCollectionResult {
  * }
  * ```
  */
-export function useHealthKitStatisticsCollection(
-  config: UseHealthKitStatisticsCollectionConfig
-): UseHealthKitStatisticsCollectionResult {
-  const [data, setData] = useState<StatisticsResult[] | null>(null);
+export function useHealthKitStatistics(
+  config: UseHealthKitStatisticsConfig
+): UseHealthKitStatisticsResult {
+  const [data, setData] = useState<StatisticsResult | StatisticsResult[] | null>(null);
   const [isLoading, setIsLoading] = useState(!config.skip);
   const [error, setError] = useState<Error | null>(null);
 
@@ -341,15 +253,18 @@ export function useHealthKitStatisticsCollection(
       }
 
       const query = new HealthKitQuery()
-        .type(config.type, 'statisticsCollection')
+        .type(config.type, 'statistics')
         .dateRange(config.startDate, config.endDate)
-        .aggregations(config.aggregations)
-        .interval(config.interval);
+        .aggregations(config.aggregations);
+
+      if (config.interval) {
+        query.interval(config.interval);
+      }
 
       queryRef.current = query;
 
       const results = await query.executeStatistics();
-      setData(results as StatisticsResult[]);
+      setData(results);
     } catch (err) {
       setError(err instanceof Error ? err : new Error(String(err)));
       setData(null);
@@ -373,8 +288,3 @@ export function useHealthKitStatisticsCollection(
 
   return { data, isLoading, error, refetch: fetch };
 }
-
-/**
- * @deprecated Use `useHealthKitQuery` instead. It now returns sample objects with `delete()` method.
- */
-export const useHealthKitSamples = useHealthKitQuery;
