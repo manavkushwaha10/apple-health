@@ -107,6 +107,20 @@ AsyncFunction("capture") { (view, options: Options) -> Ref in
 }
 ```
 
+Remember to export views in the module:
+
+```swift
+import ExpoModulesCore
+
+public class ExpoWebViewModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("ExpoWebView")
+
+    View(ExpoWebView.self) {}
+  }
+}
+```
+
 ## Marshalling-style API
 
 Consider this example https://github.com/EvanBacon/expo-shared-objects-haptics-example/blob/be90e92f8dba9b0807009502ab25c423c57e640d/modules/my-module/ios/MyModule.swift#L1C1-L178C2

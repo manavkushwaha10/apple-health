@@ -295,7 +295,8 @@ export type HealthKitDataType =
   | QuantityTypeIdentifier
   | CategoryTypeIdentifier
   | CharacteristicTypeIdentifier
-  | 'workoutType';
+  | 'workoutType'
+  | 'activitySummaryType';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Authorization Types
@@ -419,6 +420,24 @@ export interface AnchoredQueryResult<T> {
 export interface HealthKitUpdateEvent {
   typeIdentifier: string;
   anchor?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Activity Summary
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ActivitySummary {
+  dateComponents: {
+    year: number;
+    month: number;
+    day: number;
+  };
+  activeEnergyBurned: number;
+  activeEnergyBurnedGoal: number;
+  appleExerciseTime: number;
+  appleExerciseTimeGoal: number;
+  appleStandHours: number;
+  appleStandHoursGoal: number;
 }
 
 export interface AppleHealthModuleEvents {

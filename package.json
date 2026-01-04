@@ -2,7 +2,7 @@
   "name": "apple-health",
   "version": "0.1.0",
   "description": "Apple HealthKit bindings",
-  "main": "build/index.js",
+  "main": "source/index.ts",
   "types": "build/index.d.ts",
   "scripts": {
     "build": "expo-module build",

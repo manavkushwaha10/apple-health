@@ -4,7 +4,7 @@ Expo module for interacting with Apple HealthKit on Apple devices.
 
 - [x] Marshalling-style API for reading and writing health data
 - [x] Querying API (samples, statistics, statistics collections, anchored queries)
-- [ ] HealthKit UI elements https://developer.apple.com/documentation/healthkitui
+- [x] HealthKit UI elements https://developer.apple.com/documentation/healthkitui
 - [x] Config Plugin for setting up HealthKit permissions and entitlements
 - [x] Permissions that follow Expo's permission model
 - [ ] Docs for usage and setup instructions
@@ -50,6 +50,14 @@ Expo module for interacting with Apple HealthKit on Apple devices.
 - `enableBackgroundDelivery(type, frequency)` - Background updates
 - `disableBackgroundDelivery(type)` / `disableAllBackgroundDelivery()`
 
+### Activity Summary
+
+- `queryActivitySummary(startDate, endDate)` - Query daily activity summaries
+
+### UI Components
+
+- `<ActivityRingView summary={...} />` - Apple Watch-style activity rings
+
 ### Events
 
 - `onHealthKitUpdate` - Fired when subscribed data changes
@@ -59,12 +67,14 @@ Expo module for interacting with Apple HealthKit on Apple devices.
 
 ```
 ios/
-├── AppleHealthModule.swift          # Main module (~700 lines)
+├── AppleHealthModule.swift          # Main module
 ├── AppleHealth.podspec
 ├── Types/
 │   ├── TypeIdentifiers.swift        # 100+ HK type mappings
 │   ├── UnitMapping.swift            # Unit string → HKUnit
 │   └── SampleConverters.swift       # HKSample → Dictionary
+├── Views/
+│   └── ActivityRingView.swift       # HKActivityRingView wrapper
 ├── Queries/
 │   └── ObserverQueryManager.swift   # Subscription management
 └── Exceptions/
@@ -73,7 +83,8 @@ ios/
 src/
 ├── index.ts                         # Public exports
 ├── AppleHealthModule.ts             # Native module declaration
-└── AppleHealth.types.ts             # TypeScript definitions
+├── AppleHealth.types.ts             # TypeScript definitions
+└── ActivityRingView.tsx             # Activity rings React component
 
 plugin/src/
 ├── index.ts                         # Plugin entry

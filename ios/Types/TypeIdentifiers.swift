@@ -268,6 +268,9 @@ struct TypeIdentifiers {
     if identifier == "workoutType" {
       return HKObjectType.workoutType()
     }
+    if identifier == "activitySummaryType" {
+      return HKObjectType.activitySummaryType()
+    }
     return nil
   }
 

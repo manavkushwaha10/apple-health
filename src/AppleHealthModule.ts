@@ -15,6 +15,7 @@ import {
   WorkoutSample,
   StatisticsResult,
   AnchoredQueryResult,
+  ActivitySummary,
 } from './AppleHealth.types';
 
 declare class AppleHealthModule extends NativeModule<AppleHealthModuleEvents> {
@@ -112,6 +113,12 @@ declare class AppleHealthModule extends NativeModule<AppleHealthModuleEvents> {
     totalDistance?: number,
     metadata?: Record<string, unknown>
   ): Promise<boolean>;
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Activity Summary
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  queryActivitySummary(startDate: string, endDate: string): Promise<ActivitySummary[]>;
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Characteristics

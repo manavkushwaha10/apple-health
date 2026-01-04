@@ -1,9 +1,8 @@
 import { useEvent } from "expo";
-import AppleHealth from "apple-health";
+import AppleHealth, { ActivityRingView, ActivitySummary } from "apple-health";
 import { useState } from "react";
 import {
   Button,
-  SafeAreaView,
   ScrollView,
   Text,
   View,
@@ -17,6 +16,7 @@ export default function App() {
   const [heartRate, setHeartRate] = useState<number | null>(null);
   const [biologicalSex, setBiologicalSex] = useState<string | null>(null);
   const [dateOfBirth, setDateOfBirth] = useState<string | null>(null);
+  const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
 
   const healthKitUpdate = useEvent(AppleHealth, "onHealthKitUpdate");
 
@@ -32,6 +32,7 @@ export default function App() {
           "biologicalSex",
           "dateOfBirth",
           "workoutType",
+          "activitySummaryType",
         ],
         write: ["stepCount", "workoutType"],
       });
@@ -163,6 +164,24 @@ export default function App() {
     }
   };
 
+  const fetchActivitySummary = async () => {
+    try {
+      const today = new Date();
+      const summaries = await AppleHealth.queryActivitySummary(
+        today.toISOString(),
+        today.toISOString()
+      );
+      if (summaries.length > 0) {
+        setActivitySummary(summaries[0]);
+      } else {
+        Alert.alert("No Data", "No activity summary found for today");
+      }
+    } catch (error) {
+      console.error("Fetch activity summary error:", error);
+      Alert.alert("Error", String(error));
+    }
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -213,6 +232,36 @@ export default function App() {
         <Button title="Save Running Workout" onPress={saveWorkout} />
       </Group>
 
+      <Group name="Activity Rings">
+        <Button title="Fetch Today's Activity" onPress={fetchActivitySummary} />
+        <View style={styles.ringsContainer}>
+          <ActivityRingView
+            summary={activitySummary ?? {
+              activeEnergyBurned: 0,
+              activeEnergyBurnedGoal: 500,
+              appleExerciseTime: 0,
+              appleExerciseTimeGoal: 30,
+              appleStandHours: 0,
+              appleStandHoursGoal: 12,
+            }}
+            style={styles.activityRings}
+          />
+        </View>
+        {activitySummary && (
+          <View style={styles.ringStats}>
+            <Text style={styles.status}>
+              Move: {Math.round(activitySummary.activeEnergyBurned)}/{Math.round(activitySummary.activeEnergyBurnedGoal)} kcal
+            </Text>
+            <Text style={styles.status}>
+              Exercise: {Math.round(activitySummary.appleExerciseTime)}/{Math.round(activitySummary.appleExerciseTimeGoal)} min
+            </Text>
+            <Text style={styles.status}>
+              Stand: {Math.round(activitySummary.appleStandHours)}/{Math.round(activitySummary.appleStandHoursGoal)} hrs
+            </Text>
+          </View>
+        )}
+      </Group>
+
       <Group name="Events">
         <Text style={styles.status}>
           Last Update: {healthKitUpdate?.typeIdentifier ?? "None"}
@@ -259,5 +308,19 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: 12,
+  },
+  ringsContainer: {
+    alignItems: "center",
+    marginVertical: 16,
+    backgroundColor: "#000",
+    borderRadius: 12,
+    padding: 16,
+  },
+  activityRings: {
+    width: 150,
+    height: 150,
+  },
+  ringStats: {
+    marginTop: 8,
   },
 });
