@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["AppleHealthModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.applehealth.AppleHealthModule"]
+  }
+}
