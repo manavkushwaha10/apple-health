@@ -8,11 +8,21 @@ import type {
   StatisticsResult,
   ActivitySummary,
   Characteristics,
-  PluginResponse,
 } from "./types";
 
 const DEFAULT_PORT = 8081;
 const REQUEST_TIMEOUT = 30000;
+const PROTOCOL_VERSION = 1;
+
+interface MessageKey {
+  pluginName: string;
+  method: string;
+}
+
+interface PackedMessage {
+  messageKey: MessageKey;
+  payload: unknown;
+}
 
 export class HealthKitClient {
   private ws: WebSocket | null = null;
@@ -21,32 +31,29 @@ export class HealthKitClient {
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >();
   private connected = false;
+  private browserClientId = Date.now().toString();
+  private pluginName = "healthkit";
 
   async connect(port = DEFAULT_PORT): Promise<void> {
     if (this.connected) return;
 
     return new Promise((resolve, reject) => {
-      const url = `ws://localhost:${port}/message`;
+      const url = `ws://localhost:${port}/expo-dev-plugins/broadcast`;
       this.ws = new WebSocket(url);
 
       const timeout = setTimeout(() => {
         reject(new Error(`Connection timeout to ${url}`));
-      }, 5000);
+      }, 10000);
 
       this.ws.addEventListener("open", () => {
         clearTimeout(timeout);
         this.connected = true;
-        // Handshake with the devtools plugin system
-        this.ws!.send(
-          JSON.stringify({
-            type: "handshake",
-            pluginName: "healthkit",
-          })
-        );
+        // Send handshake
+        this.sendHandshake();
         resolve();
       });
 
-      this.ws.addEventListener("error", (e) => {
+      this.ws.addEventListener("error", () => {
         clearTimeout(timeout);
         reject(new Error(`WebSocket error: Failed to connect to Expo devtools at ${url}`));
       });
@@ -56,14 +63,20 @@ export class HealthKitClient {
       });
 
       this.ws.addEventListener("message", (event) => {
-        try {
-          const msg = JSON.parse(event.data as string) as PluginResponse;
-          this.handleMessage(msg);
-        } catch {
-          // Ignore non-JSON messages
-        }
+        this.handleMessage(event.data);
       });
     });
+  }
+
+  private sendHandshake(): void {
+    const handshake = {
+      protocolVersion: PROTOCOL_VERSION,
+      pluginName: this.pluginName,
+      method: "handshake",
+      browserClientId: this.browserClientId,
+      __isHandshakeMessages: true,
+    };
+    this.ws?.send(JSON.stringify(handshake));
   }
 
   async disconnect(): Promise<void> {
@@ -74,15 +87,75 @@ export class HealthKitClient {
     }
   }
 
-  private handleMessage(msg: PluginResponse): void {
-    const pending = this.pending.get(msg.id);
-    if (!pending) return;
+  private handleMessage(data: string | ArrayBuffer): void {
+    // Handle string messages (could be handshake or packed)
+    if (typeof data === "string") {
+      try {
+        const parsed = JSON.parse(data);
+        // Check if it's a handshake message
+        if (parsed.__isHandshakeMessages) {
+          return;
+        }
+        // Check if it's a packed message with messageKey
+        if (parsed.messageKey) {
+          this.handlePackedMessage(parsed);
+        }
+      } catch {
+        // Not JSON, ignore
+      }
+      return;
+    }
 
-    this.pending.delete(msg.id);
-    if (msg.type === "error" || msg.error) {
-      pending.reject(new Error(msg.error ?? "Unknown error"));
-    } else {
-      pending.resolve(msg.data);
+    // Handle binary/ArrayBuffer messages
+    if (data instanceof ArrayBuffer) {
+      const unpacked = this.unpackMessage(data);
+      if (unpacked) {
+        this.handlePackedMessage(unpacked);
+      }
+    }
+  }
+
+  private handlePackedMessage(msg: PackedMessage): void {
+    const { messageKey, payload } = msg;
+
+    // Only handle messages for our plugin
+    if (messageKey.pluginName !== this.pluginName) {
+      return;
+    }
+
+    // Handle result/error messages
+    if (messageKey.method === "result" || messageKey.method === "error") {
+      const response = payload as { id: string; data?: unknown; error?: string };
+      const pending = this.pending.get(response.id);
+      if (!pending) return;
+
+      this.pending.delete(response.id);
+      if (messageKey.method === "error" || response.error) {
+        pending.reject(new Error(response.error ?? "Unknown error"));
+      } else {
+        pending.resolve(response.data);
+      }
+    }
+  }
+
+  private packMessage(method: string, payload: unknown): ArrayBuffer {
+    const messageKey: MessageKey = {
+      pluginName: this.pluginName,
+      method,
+    };
+    const msg: PackedMessage = { messageKey, payload };
+    const json = JSON.stringify(msg);
+    const encoder = new TextEncoder();
+    return encoder.encode(json).buffer;
+  }
+
+  private unpackMessage(data: ArrayBuffer): PackedMessage | null {
+    try {
+      const decoder = new TextDecoder();
+      const json = decoder.decode(data);
+      return JSON.parse(json);
+    } catch {
+      return null;
     }
   }
 
@@ -98,13 +171,13 @@ export class HealthKitClient {
         reject,
       });
 
-      this.ws!.send(
-        JSON.stringify({
-          type: "message",
-          pluginName: "healthkit",
-          data: { id, type, payload },
-        })
-      );
+      // Send as JSON string (Expo devtools expects JSON, not binary)
+      const messagePayload = { id, type, payload };
+      const msg = {
+        messageKey: { pluginName: this.pluginName, method: "message" },
+        payload: messagePayload,
+      };
+      this.ws!.send(JSON.stringify(msg));
 
       setTimeout(() => {
         if (this.pending.has(id)) {

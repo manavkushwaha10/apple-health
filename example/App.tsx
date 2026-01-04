@@ -1,5 +1,9 @@
 import { useEvent } from "expo";
-import AppleHealth, { ActivityRingView, ActivitySummary } from "apple-health";
+import AppleHealth, {
+  ActivityRingView,
+  ActivitySummary,
+  useHealthKitDevTools,
+} from "apple-health";
 import { useState } from "react";
 import {
   Button,
@@ -11,12 +15,15 @@ import {
 } from "react-native";
 
 export default function App() {
+  // Enable CLI access to HealthKit in development
+  useHealthKitDevTools();
   const [authorized, setAuthorized] = useState(false);
   const [steps, setSteps] = useState<number | null>(null);
   const [heartRate, setHeartRate] = useState<number | null>(null);
   const [biologicalSex, setBiologicalSex] = useState<string | null>(null);
   const [dateOfBirth, setDateOfBirth] = useState<string | null>(null);
-  const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
+  const [activitySummary, setActivitySummary] =
+    useState<ActivitySummary | null>(null);
 
   const healthKitUpdate = useEvent(AppleHealth, "onHealthKitUpdate");
 
@@ -233,10 +240,29 @@ export default function App() {
       </Group>
 
       <Group name="Activity Rings">
-        <Button title="Fetch Today's Activity" onPress={fetchActivitySummary} />
+        <View style={styles.buttonRow}>
+          <Button
+            title="Fetch Today's Activity"
+            onPress={fetchActivitySummary}
+          />
+          <Button
+            title="Use Demo Data"
+            onPress={() => {
+              setActivitySummary({
+                dateComponents: { year: 2024, month: 1, day: 1 },
+                activeEnergyBurned: 420,
+                activeEnergyBurnedGoal: 500,
+                appleExerciseTime: 25,
+                appleExerciseTimeGoal: 30,
+                appleStandHours: 10,
+                appleStandHoursGoal: 12,
+              });
+            }}
+          />
+        </View>
         <View style={styles.ringsContainer}>
           <ActivityRingView
-            summary={activitySummary ?? {
+            summary={{
               activeEnergyBurned: 0,
               activeEnergyBurnedGoal: 500,
               appleExerciseTime: 0,
@@ -250,13 +276,16 @@ export default function App() {
         {activitySummary && (
           <View style={styles.ringStats}>
             <Text style={styles.status}>
-              Move: {Math.round(activitySummary.activeEnergyBurned)}/{Math.round(activitySummary.activeEnergyBurnedGoal)} kcal
+              Move: {Math.round(activitySummary.activeEnergyBurned)}/
+              {Math.round(activitySummary.activeEnergyBurnedGoal)} kcal
             </Text>
             <Text style={styles.status}>
-              Exercise: {Math.round(activitySummary.appleExerciseTime)}/{Math.round(activitySummary.appleExerciseTimeGoal)} min
+              Exercise: {Math.round(activitySummary.appleExerciseTime)}/
+              {Math.round(activitySummary.appleExerciseTimeGoal)} min
             </Text>
             <Text style={styles.status}>
-              Stand: {Math.round(activitySummary.appleStandHours)}/{Math.round(activitySummary.appleStandHoursGoal)} hrs
+              Stand: {Math.round(activitySummary.appleStandHours)}/
+              {Math.round(activitySummary.appleStandHoursGoal)} hrs
             </Text>
           </View>
         )}
@@ -322,5 +351,9 @@ const styles = StyleSheet.create({
   },
   ringStats: {
     marginTop: 8,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    gap: 8,
   },
 });

@@ -24,25 +24,32 @@ final class ActivityRingView: ExpoView {
 
     let summary = HKActivitySummary()
 
-    if let activeEnergyBurned = dict["activeEnergyBurned"] as? Double {
-      summary.activeEnergyBurned = HKQuantity(unit: .kilocalorie(), doubleValue: activeEnergyBurned)
+    if let value = toDouble(dict["activeEnergyBurned"]) {
+      summary.activeEnergyBurned = HKQuantity(unit: .kilocalorie(), doubleValue: value)
     }
-    if let activeEnergyBurnedGoal = dict["activeEnergyBurnedGoal"] as? Double {
-      summary.activeEnergyBurnedGoal = HKQuantity(unit: .kilocalorie(), doubleValue: activeEnergyBurnedGoal)
+    if let value = toDouble(dict["activeEnergyBurnedGoal"]) {
+      summary.activeEnergyBurnedGoal = HKQuantity(unit: .kilocalorie(), doubleValue: value)
     }
-    if let appleExerciseTime = dict["appleExerciseTime"] as? Double {
-      summary.appleExerciseTime = HKQuantity(unit: .minute(), doubleValue: appleExerciseTime)
+    if let value = toDouble(dict["appleExerciseTime"]) {
+      summary.appleExerciseTime = HKQuantity(unit: .minute(), doubleValue: value)
     }
-    if let appleExerciseTimeGoal = dict["appleExerciseTimeGoal"] as? Double {
-      summary.appleExerciseTimeGoal = HKQuantity(unit: .minute(), doubleValue: appleExerciseTimeGoal)
+    if let value = toDouble(dict["appleExerciseTimeGoal"]) {
+      summary.appleExerciseTimeGoal = HKQuantity(unit: .minute(), doubleValue: value)
     }
-    if let appleStandHours = dict["appleStandHours"] as? Double {
-      summary.appleStandHours = HKQuantity(unit: .count(), doubleValue: appleStandHours)
+    if let value = toDouble(dict["appleStandHours"]) {
+      summary.appleStandHours = HKQuantity(unit: .count(), doubleValue: value)
     }
-    if let appleStandHoursGoal = dict["appleStandHoursGoal"] as? Double {
-      summary.appleStandHoursGoal = HKQuantity(unit: .count(), doubleValue: appleStandHoursGoal)
+    if let value = toDouble(dict["appleStandHoursGoal"]) {
+      summary.appleStandHoursGoal = HKQuantity(unit: .count(), doubleValue: value)
     }
 
     ringView.setActivitySummary(summary, animated: true)
+  }
+
+  private func toDouble(_ value: Any?) -> Double? {
+    if let d = value as? Double { return d }
+    if let i = value as? Int { return Double(i) }
+    if let n = value as? NSNumber { return n.doubleValue }
+    return nil
   }
 }

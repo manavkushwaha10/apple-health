@@ -31,6 +31,9 @@
         }
       ]
     ],
+    "experiments": {
+      "autolinkingModuleResolution": true
+    },
     "web": {
       "favicon": "./assets/favicon.png"
     },
