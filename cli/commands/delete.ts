@@ -28,6 +28,7 @@ async function deleteSamples(
     }
 
     await client.disconnect();
+    process.exit(0);
   } catch (error) {
     console.error(`Error: ${(error as Error).message}`);
     process.exit(1);

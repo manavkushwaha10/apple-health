@@ -39,6 +39,7 @@ async function authStatus(
     }
 
     await client.disconnect();
+    process.exit(0);
   } catch (error) {
     console.error(`Error: ${(error as Error).message}`);
     process.exit(1);
@@ -103,6 +104,7 @@ async function authRequest(flags: AuthRequestFlags): Promise<void> {
     }
 
     await client.disconnect();
+    process.exit(0);
   } catch (error) {
     console.error(`Error: ${(error as Error).message}`);
     process.exit(1);
