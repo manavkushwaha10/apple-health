@@ -20,11 +20,59 @@ public class AppleHealthModule: Module {
     return _healthStore
   }
 
-  private let dateFormatter: ISO8601DateFormatter = {
+  private let dateFormatterWithFractionalSeconds: ISO8601DateFormatter = {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     return formatter
   }()
+
+  private let dateFormatterWithoutFractionalSeconds: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime]
+    return formatter
+  }()
+
+  private let dateFormatterDateOnly: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd"
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = TimeZone.current
+    return formatter
+  }()
+
+  /// Parses a date string supporting multiple formats:
+  /// - ISO8601 with fractional seconds: 2024-01-15T10:30:00.000Z
+  /// - ISO8601 without fractional seconds: 2024-01-15T10:30:00Z
+  /// - Date only: 2024-01-15
+  /// - Unix timestamp (ms): 1705312200000
+  private func parseDate(_ dateString: String) -> Date? {
+    // Try ISO8601 with fractional seconds first
+    if let date = dateFormatterWithFractionalSeconds.date(from: dateString) {
+      return date
+    }
+
+    // Try ISO8601 without fractional seconds
+    if let date = dateFormatterWithoutFractionalSeconds.date(from: dateString) {
+      return date
+    }
+
+    // Try date-only format
+    if let date = dateFormatterDateOnly.date(from: dateString) {
+      return date
+    }
+
+    // Try Unix timestamp in milliseconds
+    if let timestamp = Double(dateString), timestamp > 1_000_000_000_000 {
+      return Date(timeIntervalSince1970: timestamp / 1000)
+    }
+
+    return nil
+  }
+
+  /// Formats a date to ISO8601 with fractional seconds
+  private func formatDate(_ date: Date) -> String {
+    return dateFormatterWithFractionalSeconds.string(from: date)
+  }
 
   public func definition() -> ModuleDefinition {
     Name("AppleHealth")
@@ -111,7 +159,7 @@ public class AppleHealthModule: Module {
             let date = Calendar.current.date(from: components) else {
         return nil
       }
-      return self.dateFormatter.string(from: date)
+      return self.formatDate(date)
     }
 
     AsyncFunction("getBiologicalSex") { () -> String? in
@@ -227,8 +275,8 @@ public class AppleHealthModule: Module {
       guard let hkUnit = UnitMapping.unit(for: unit) else {
         throw InvalidUnitException(unit)
       }
-      guard let start = self.dateFormatter.date(from: startDate),
-            let end = self.dateFormatter.date(from: endDate) else {
+      guard let start = self.parseDate(startDate),
+            let end = self.parseDate(endDate) else {
         throw InvalidDateException()
       }
 
@@ -286,8 +334,8 @@ public class AppleHealthModule: Module {
       guard let categoryType = TypeIdentifiers.categoryType(for: typeIdentifier) else {
         throw InvalidTypeIdentifierException(typeIdentifier)
       }
-      guard let start = self.dateFormatter.date(from: startDate),
-            let end = self.dateFormatter.date(from: endDate) else {
+      guard let start = self.parseDate(startDate),
+            let end = self.parseDate(endDate) else {
         throw InvalidDateException()
       }
 
@@ -348,8 +396,8 @@ public class AppleHealthModule: Module {
       let statisticsOptions = self.statisticsOptions(from: aggregations)
       let interval = self.dateComponents(for: options.interval)
 
-      guard let startDate = options.startDate.flatMap({ self.dateFormatter.date(from: $0) }) ?? Calendar.current.date(byAdding: .day, value: -7, to: Date()),
-            let endDate = options.endDate.flatMap({ self.dateFormatter.date(from: $0) }) ?? Date() as Date? else {
+      guard let startDate = options.startDate.flatMap({ self.parseDate($0) }) ?? Calendar.current.date(byAdding: .day, value: -7, to: Date()),
+            let endDate = options.endDate.flatMap({ self.parseDate($0) }) ?? Date() as Date? else {
         throw InvalidDateException()
       }
 
@@ -530,8 +578,8 @@ public class AppleHealthModule: Module {
       guard let store = self.healthStore else {
         throw HealthKitNotAvailableException()
       }
-      guard let start = self.dateFormatter.date(from: startDate),
-            let end = self.dateFormatter.date(from: endDate) else {
+      guard let start = self.parseDate(startDate),
+            let end = self.parseDate(endDate) else {
         throw InvalidDateException()
       }
 
@@ -569,8 +617,8 @@ public class AppleHealthModule: Module {
       guard let store = self.healthStore else {
         throw HealthKitNotAvailableException()
       }
-      guard let start = self.dateFormatter.date(from: startDate),
-            let end = self.dateFormatter.date(from: endDate) else {
+      guard let start = self.parseDate(startDate),
+            let end = self.parseDate(endDate) else {
         throw InvalidDateException()
       }
 
@@ -705,8 +753,8 @@ public class AppleHealthModule: Module {
   // MARK: - Helper Methods
 
   private func createPredicate(startDate: String?, endDate: String?) -> NSPredicate? {
-    let start = startDate.flatMap { dateFormatter.date(from: $0) }
-    let end = endDate.flatMap { dateFormatter.date(from: $0) }
+    let start = startDate.flatMap { parseDate($0) }
+    let end = endDate.flatMap { parseDate($0) }
 
     if start != nil || end != nil {
       return HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
