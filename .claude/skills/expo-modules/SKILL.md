@@ -259,6 +259,7 @@ Then add the subscriber to the `expo-module.config.json`:
 
 - Create a Config Plugin for setting up all permissions and entitlements.
 - Permissions APIs should follow Expo's permission model and implement hooks.
+  - Ref: https://github.com/expo/expo/blob/843d5e108ff70539ac353721d3a7765a5d08d502/packages/expo-media-library/src/MediaLibrary.ts#L502-L519
 - Document when things don't work in Expo Go and link to dev client instructions.
 - Consider creating Expo devtools plugins for interacting with native APIs. Optimize for Claude Code usage, e.g. a Bun CLI before a UI.
   - Ref: https://docs.expo.dev/debugging/devtools-plugins
