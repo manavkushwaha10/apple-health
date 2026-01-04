@@ -13,6 +13,8 @@ import {
   useHealthKitStatistics,
   useHealthKitSubscription,
   useHealthKitAnchor,
+  usePermissions,
+  PermissionStatus,
 } from "apple-health/hooks";
 import { useState, useCallback, useEffect } from "react";
 import {
@@ -31,7 +33,6 @@ export default function App() {
   // Enable CLI access to HealthKit in development
   useHealthKitDevTools();
 
-  const [authorized, setAuthorized] = useState(false);
   const [biologicalSex, setBiologicalSex] = useState<string | null>(null);
   const [dateOfBirth, setDateOfBirth] = useState<string | null>(null);
   const [activitySummary, setActivitySummary] =
@@ -42,30 +43,26 @@ export default function App() {
   const isAvailable = AppleHealth.isAvailable();
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Authorization
+  // Authorization (usePermissions hook)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const requestAuthorization = async () => {
-    try {
-      const result = await AppleHealth.requestAuthorization({
-        read: [
-          "stepCount",
-          "heartRate",
-          "sleepAnalysis",
-          "biologicalSex",
-          "dateOfBirth",
-          "workoutType",
-          "activitySummaryType",
-        ],
-        write: ["stepCount", "sleepAnalysis", "workoutType"],
-      });
-      setAuthorized(true);
-      Alert.alert("Authorization", `Status: ${result.status}`);
-    } catch (error) {
-      console.error("Authorization error:", error);
-      Alert.alert("Error", String(error));
-    }
-  };
+  const [permissionStatus, requestPermission] = usePermissions({
+    read: [
+      "stepCount",
+      "heartRate",
+      "sleepAnalysis",
+      "biologicalSex",
+      "dateOfBirth",
+      "workoutType",
+      "activitySummaryType",
+    ],
+    write: ["stepCount", "sleepAnalysis", "workoutType"],
+  });
+
+  // Use the granted property to determine if we can proceed.
+  // Note: HealthKit hides read permission status for privacy, so `granted`
+  // only reflects write permissions. For read-only access, check data directly.
+  const authorized = permissionStatus?.granted ?? false;
 
   // ─────────────────────────────────────────────────────────────────────────────
   // useHealthKitQuery - Fetch samples with delete capability
@@ -167,7 +164,10 @@ export default function App() {
   // Track deleted samples in a real app you'd remove from local DB
   useEffect(() => {
     if (deletedObjects.length > 0) {
-      console.log("Deleted samples:", deletedObjects.map((d) => d.uuid));
+      console.log(
+        "Deleted samples:",
+        deletedObjects.map((d) => d.uuid)
+      );
     }
   }, [deletedObjects]);
 
@@ -186,13 +186,22 @@ export default function App() {
         .limit(10)
         .execute();
 
-      const sleepStates = ["inBed", "asleepUnspecified", "awake", "asleepCore", "asleepDeep", "asleepREM"];
+      const sleepStates = [
+        "inBed",
+        "asleepUnspecified",
+        "awake",
+        "asleepCore",
+        "asleepDeep",
+        "asleepREM",
+      ];
       const summary = samples
         .map((s) => {
           if (s.__typename === "CategorySample") {
             const state = sleepStates[s.value] ?? `unknown(${s.value})`;
             const duration = Math.round(
-              (new Date(s.endDate).getTime() - new Date(s.startDate).getTime()) / 60000
+              (new Date(s.endDate).getTime() -
+                new Date(s.startDate).getTime()) /
+                60000
             );
             return `${state}: ${duration} min`;
           }
@@ -224,7 +233,10 @@ export default function App() {
         .endDate(now)
         .save();
 
-      Alert.alert("Success", `Saved 100 steps (uuid: ${sample.uuid.slice(0, 8)}...)`);
+      Alert.alert(
+        "Success",
+        `Saved 100 steps (uuid: ${sample.uuid.slice(0, 8)}...)`
+      );
       refetchSteps();
     } catch (error) {
       Alert.alert("Error", String(error));
@@ -307,10 +319,20 @@ export default function App() {
         <Text>HealthKit Available: {isAvailable ? "Yes" : "No"}</Text>
       </Group>
 
-      <Group name="Authorization">
-        <Button title="Request Authorization" onPress={requestAuthorization} />
+      <Group name="usePermissions">
+        <Text style={styles.description}>
+          Expo-style permission hook with automatic status fetching.
+        </Text>
+        <Text style={styles.apiLabel}>usePermissions</Text>
+        <Button title="Request Permission" onPress={requestPermission} />
         <Text style={styles.status}>
-          Authorized: {authorized ? "Yes" : "No"}
+          Status: {permissionStatus?.status ?? "loading..."}
+        </Text>
+        <Text style={styles.status}>
+          Granted: {permissionStatus?.granted ? "Yes" : "No"}
+        </Text>
+        <Text style={styles.status}>
+          Can Ask Again: {permissionStatus?.canAskAgain ? "Yes" : "No"}
         </Text>
       </Group>
 
@@ -330,13 +352,13 @@ export default function App() {
           </Text>
           <Button
             title={subscriptionActive ? "Pause" : "Resume"}
-            onPress={subscriptionActive ? pauseSubscription : resumeSubscription}
+            onPress={
+              subscriptionActive ? pauseSubscription : resumeSubscription
+            }
           />
         </View>
         <Text style={styles.status}>Updates received: {updateCount}</Text>
-        <Text style={styles.status}>
-          Last update: {lastUpdate ?? "Never"}
-        </Text>
+        <Text style={styles.status}>Last update: {lastUpdate ?? "Never"}</Text>
         <View style={styles.spacer} />
         <Text style={styles.status}>
           Today's Steps: {steps != null ? Math.round(steps) : "Loading..."}
@@ -351,15 +373,17 @@ export default function App() {
         <Text style={styles.apiLabel}>useHealthKitAnchor</Text>
         <View style={styles.row}>
           <Button
-            title={anchorLoading ? "Loading..." : `Fetch More (${anchorSamples.length} loaded)`}
+            title={
+              anchorLoading
+                ? "Loading..."
+                : `Fetch More (${anchorSamples.length} loaded)`
+            }
             onPress={fetchMore}
             disabled={!hasMore || anchorLoading || !authorized}
           />
           <Button title="Reset" onPress={resetAnchor} disabled={!authorized} />
         </View>
-        <Text style={styles.status}>
-          Has more: {hasMore ? "Yes" : "No"}
-        </Text>
+        <Text style={styles.status}>Has more: {hasMore ? "Yes" : "No"}</Text>
         <Text style={styles.status}>
           Deleted objects tracked: {deletedObjects.length}
         </Text>

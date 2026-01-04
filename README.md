@@ -7,7 +7,7 @@ An Expo module for interacting with Apple HealthKit on iOS devices. Read and wri
 - **70+ quantity types** - Steps, heart rate, calories, distance, sleep, nutrition, and more
 - **40+ category types** - Sleep analysis, symptoms, mindfulness, reproductive health
 - **80+ workout types** - Running, cycling, swimming, yoga, and more
-- **React hooks** - `useHealthKitQuery`, `useHealthKitStatistics`, `useHealthKitSubscription`, `useHealthKitAnchor`
+- **React hooks** - `usePermissions`, `useHealthKitQuery`, `useHealthKitStatistics`, `useHealthKitSubscription`, `useHealthKitAnchor`
 - **Fluent builders** - `HealthKitQuery` and `HealthKitSampleBuilder` for imperative use
 - **Real-time subscriptions** - Get notified when health data changes
 - **Background delivery** - Process health updates when your app is in the background
@@ -53,23 +53,26 @@ Add the config plugin to your `app.json` or `app.config.js`:
 ## Quick Start
 
 ```tsx
-import AppleHealth from "apple-health";
-import { useHealthKitQuery, useHealthKitStatistics } from "apple-health/hooks";
+import {
+  usePermissions,
+  useHealthKitQuery,
+  useHealthKitStatistics,
+  PermissionStatus,
+} from "apple-health/hooks";
 
 export default function App() {
-  // Request authorization
-  const authorize = async () => {
-    await AppleHealth.requestAuthorization({
-      read: ["stepCount", "heartRate", "sleepAnalysis"],
-      write: ["stepCount"],
-    });
-  };
+  // Request authorization with Expo-style hook
+  const [status, requestPermission] = usePermissions({
+    read: ["stepCount", "heartRate", "sleepAnalysis"],
+    write: ["stepCount"],
+  });
 
   // Query samples with a hook
   const { data: heartRates } = useHealthKitQuery({
     type: "heartRate",
     kind: "quantity",
     limit: 10,
+    skip: status?.status !== PermissionStatus.GRANTED,
   });
 
   // Get aggregated statistics
@@ -77,11 +80,13 @@ export default function App() {
     type: "stepCount",
     aggregations: ["cumulativeSum"],
     startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    skip: status?.status !== PermissionStatus.GRANTED,
   });
 
   return (
     <View>
-      <Button title="Authorize" onPress={authorize} />
+      <Button title="Authorize" onPress={requestPermission} />
+      <Text>Status: {status?.status}</Text>
       <Text>Today's steps: {steps?.sumQuantity ?? 0}</Text>
     </View>
   );
@@ -90,30 +95,116 @@ export default function App() {
 
 ## Authorization
 
-Request permission to read and write health data:
+### usePermissions Hook (Recommended)
+
+The `usePermissions` hook follows Expo's permission pattern with automatic status fetching:
+
+```tsx
+import { usePermissions, PermissionStatus } from "apple-health/hooks";
+
+function App() {
+  const [status, requestPermission, getPermission] = usePermissions({
+    read: ["stepCount", "heartRate", "sleepAnalysis"],
+    write: ["stepCount"],
+  });
+
+  if (status?.status === PermissionStatus.GRANTED) {
+    return <Text>Access granted!</Text>;
+  }
+
+  return <Button title="Grant Access" onPress={requestPermission} />;
+}
+```
+
+**Hook options:**
+
+| Option    | Type       | Description                              |
+| --------- | ---------- | ---------------------------------------- |
+| `read`    | `string[]` | Data types to request read access for    |
+| `write`   | `string[]` | Data types to request write access for   |
+| `get`     | `boolean`  | Auto-fetch status on mount (default: true) |
+| `request` | `boolean`  | Auto-request on mount (default: false)   |
+
+**Return value:** `[status, requestPermission, getPermission]`
+
+- `status` - Current permission status (`HealthKitPermissionResponse | null`)
+- `requestPermission` - Function to request permissions
+- `getPermission` - Function to refresh current status
+
+**Status properties:**
+
+| Property      | Type                | Description                          |
+| ------------- | ------------------- | ------------------------------------ |
+| `status`      | `PermissionStatus`  | `'granted'`, `'denied'`, or `'undetermined'` |
+| `granted`     | `boolean`           | Whether all permissions are granted  |
+| `canAskAgain` | `boolean`           | Whether the user can be prompted     |
+| `expires`     | `'never'`           | Permissions don't expire             |
+| `permissions` | `object`            | Detailed per-type authorization status |
+
+### Imperative API
+
+For non-React contexts, use the module directly:
 
 ```tsx
 import AppleHealth from "apple-health";
 
 const result = await AppleHealth.requestAuthorization({
-  read: [
-    "stepCount",
-    "heartRate",
-    "sleepAnalysis",
-    "biologicalSex",
-    "dateOfBirth",
-    "workoutType",
-    "activitySummaryType",
-  ],
-  write: ["stepCount", "sleepAnalysis", "workoutType"],
+  read: ["stepCount", "heartRate", "sleepAnalysis"],
+  write: ["stepCount"],
 });
 
 console.log(result.status); // 'notDetermined' | 'sharingDenied' | 'sharingAuthorized'
 ```
 
-> **Note**: HealthKit hides read authorization status for privacy. Query data to verify read access.
+Or use the standalone async functions:
+
+```tsx
+import { getPermissionsAsync, requestPermissionsAsync } from "apple-health/hooks";
+
+// Check current status
+const status = await getPermissionsAsync({
+  read: ["stepCount"],
+  write: ["stepCount"],
+});
+
+// Request permissions
+const result = await requestPermissionsAsync({
+  read: ["stepCount", "heartRate"],
+  write: ["stepCount"],
+});
+```
+
+> **Important**: HealthKit intentionally hides read authorization status for privacy. The `granted` and `status` properties only reflect **write** permissions. For read-only access, the status will always be `undetermined`. To verify read access, try querying data directly.
 
 ## React Hooks
+
+### usePermissions
+
+Request and check HealthKit authorization using Expo's permission pattern:
+
+```tsx
+import { usePermissions, PermissionStatus } from "apple-health/hooks";
+
+const [status, requestPermission, getPermission] = usePermissions({
+  read: ["stepCount", "heartRate"],
+  write: ["stepCount"],
+  // get: true,    // Auto-fetch on mount (default)
+  // request: false, // Auto-request on mount
+});
+
+// Check status (reflects write permissions only)
+if (status?.granted) {
+  // Write permissions granted
+}
+
+// Request permissions
+await requestPermission();
+
+// Refresh status
+await getPermission();
+```
+
+> **Note**: HealthKit hides read permission status for privacy. The `granted` property only reflects write permissions. For read-only apps, query data directly to verify access.
 
 ### useHealthKitQuery
 
@@ -494,7 +585,15 @@ import type {
   HealthKitPermissions,
   AuthorizationResult,
   AuthorizationStatus,
+
+  // Permissions (Expo-style)
+  HealthKitPermissionOptions,
+  HealthKitPermissionResponse,
 } from "apple-health";
+
+// PermissionStatus enum
+import { PermissionStatus } from "apple-health";
+// PermissionStatus.GRANTED | PermissionStatus.DENIED | PermissionStatus.UNDETERMINED
 ```
 
 ---
