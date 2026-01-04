@@ -1,4 +1,3 @@
-
 Expo module for interacting with Apple HealthKit on Apple devices.
 
 - [ ] Marshalling-style API for reading and writing health data
@@ -10,14 +9,20 @@ Expo module for interacting with Apple HealthKit on Apple devices.
 - [ ] TypeScript typings for all methods and options
 - [ ] Debugging UI for interacting with data
 
-# Native iOS
+## Great module standards
 
+- Design native APIs as if you contributing W3C specs for the browser, take inspiration from modern web modules. eg `std:kv-storage`, `clipboard`.
+- Aim for 100% backwards compatibility like the web.
+- Create escape hatches for single-platform functionality.
+- Avoid extraneous abstractions. Directly expose native functionality.
+- Avoid unnecessary async methods. Use sync methods when possible.
+- Prefer string union types for API options instead of boolean flags, enums, or multiple parameters. eg instead of `capture(options: { isHighQuality: boolean })`, use `capture(options: { quality: 'high' | 'medium' | 'low' })`.
+- Marshalling is awesome for platform-specific APIs.
+- New Architecture only. NEVER support legacy React Native architecture.
 - ALWAYS use only Expo modules API.
 - Prefer Swift and Kotlin.
-- New Architecture only. NEVER support legacy React Native architecture.
-- Design native APIs as if you contributing W3C specs for the browser, take inspiration from modern web modules. eg `std:kv-storage`, `clipboard`.
-- Prefer string union types for API options instead of boolean flags, enums, or multiple parameters. eg instead of `capture(options: { isHighQuality: boolean })`, use `capture(options: { quality: 'high' | 'medium' | 'low' })`.
 - Use optionality for availability checks as opposed to extraneous `isAvailable` functions or constants. eg `snapshot.capture?.()` instead of `snapshot.isAvailable && snapshot.capture()`.
+- ALWAYS support the latest and greatest API features.
 
 Example of a GREAT Expo module:
 
@@ -60,6 +65,25 @@ export {};
 - Docs in the type definitions.
 - Optional availability checks instead of extraneous `isAvailable` methods.
 
+Example of a POOR Expo module:
+
+```ts
+import { NativeModulesProxy } from "expo-modules-core";
+const { ExpoAppClip } = NativeModulesProxy;
+export default {
+  promptAppClip() {
+    return ExpoAppClip.promptAppClip();
+  },
+  isAppClipAvailable() {
+    return ExpoAppClip.isAppClipAvailable();
+  },
+};
+```
+
+## Great documentation
+
+- If you have a function like `isAvailable()`, explain why it exists in the docs. Research cases where it may return false such as in a simulator or particular OS version.
+- Document OS version availability for functions and constants in the type definitions.
 
 ## Views
 
@@ -76,7 +100,6 @@ AsyncFunction("capture") { (view, options: Options) -> Ref in
 Consider this example https://github.com/EvanBacon/expo-shared-objects-haptics-example/blob/be90e92f8dba9b0807009502ab25c423c57e640d/modules/my-module/ios/MyModule.swift#L1C1-L178C2
 
 Using `@retroactive Convertible` and `AnyArgument` to convert between Swift types and dictionaries enables passing complex data structures across the boundary without writing custom serialization code for each type.
-
 
 ```swift
 extension CHHapticEventParameter: @retroactive Convertible, AnyArgument {
@@ -113,7 +136,7 @@ extension CHHapticDynamicParameter: @retroactive Convertible, AnyArgument {
               let relativeTime = dict["relativeTime"] as? Double else {
             throw NotADictionaryException()
         }
-        
+
         return Self(parameterID: CHHapticDynamicParameter.ID(rawValue: parameterIDRaw), value: Float(value), relativeTime: relativeTime)
     }
 }
@@ -163,7 +186,7 @@ Function("playPattern") { (pattern: CHHapticPattern) in
 }
 ```
 
-## Interacting with AppDelegate 
+## Interacting with AppDelegate
 
 To interact with HealthKit, the module may need to respond to app lifecycle events. This can be done by implementing the `ExpoAppDelegateSubscriber` protocol.
 
@@ -199,6 +222,9 @@ Then add the subscriber to the `expo-module.config.json`:
 }
 ```
 
+## Verification
+
+- Run `yarn expo run:ios --no-bundler` in `./example` to compile the source.
 
 ## References
 

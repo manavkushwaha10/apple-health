@@ -13,13 +13,14 @@
     "prepublishOnly": "expo-module prepublishOnly",
     "expo-module": "expo-module",
     "open:ios": "xed example/ios",
-    "open:android": "open -a \"Android Studio\" example/android"
+    "build:plugin": "tsc -p plugin"
   },
   "keywords": [
     "react-native",
     "expo",
     "apple-health",
-    "AppleHealth"
+    "AppleHealth",
+    "healthkit"
   ],
   "repository": "https://github.com/EvanBacon/apple-health",
   "bugs": {
@@ -39,5 +40,10 @@
     "expo": "*",
     "react": "*",
     "react-native": "*"
+  },
+  "expo": {
+    "autolinking": {
+      "nativeModulesDir": "."
+    }
   }
 }

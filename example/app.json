@@ -18,10 +18,24 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
+      "predictiveBackGestureEnabled": false
     },
+    "plugins": [
+      [
+        "../plugin/build",
+        {
+          "healthSharePermission": "Allow me to read your health data",
+          "healthUpdatePermission": "Allow me to write your health data",
+          "isClinicalDataEnabled": false,
+          "backgroundDelivery": true
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "ios": {
+      "bundleIdentifier": "com.bacon.apple-health-example"
     }
   }
 }
