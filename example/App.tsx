@@ -1,8 +1,19 @@
 import { useEvent } from "expo";
-import AppleHealth, { ActivityRingView, ActivitySummary } from "apple-health";
+import AppleHealth, {
+  ActivityRingView,
+  ActivitySummary,
+  HealthKitQuery,
+  QuantitySample,
+  buildQuantitySample,
+  buildWorkout,
+} from "apple-health";
 import { useHealthKitDevTools } from "apple-health/dev-tools";
-import { useHealthKitQuery } from "apple-health/hooks";
-import { useState } from "react";
+import {
+  useHealthKitQuery,
+  useHealthKitStatistics,
+  useHealthKitSubscription,
+} from "apple-health/hooks";
+import { useState, useCallback } from "react";
 import {
   Button,
   ScrollView,
@@ -10,22 +21,70 @@ import {
   View,
   StyleSheet,
   Alert,
+  TouchableOpacity,
 } from "react-native";
 
 export default function App() {
   // Enable CLI access to HealthKit in development
   useHealthKitDevTools();
+
   const [authorized, setAuthorized] = useState(false);
-  const [steps, setSteps] = useState<number | null>(null);
-  const [heartRate, setHeartRate] = useState<number | null>(null);
   const [biologicalSex, setBiologicalSex] = useState<string | null>(null);
   const [dateOfBirth, setDateOfBirth] = useState<string | null>(null);
   const [activitySummary, setActivitySummary] =
     useState<ActivitySummary | null>(null);
+  const [recentSamples, setRecentSamples] = useState<QuantitySample[]>([]);
 
+  // Legacy event listener for comparison
   const healthKitUpdate = useEvent(AppleHealth, "onHealthKitUpdate");
-
   const isAvailable = AppleHealth.isAvailable();
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // New Hooks API - Reactive data fetching
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // Today's steps using the statistics hook
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const {
+    data: stepsData,
+    isLoading: stepsLoading,
+    refetch: refetchSteps,
+  } = useHealthKitStatistics({
+    type: "stepCount",
+    aggregations: ["cumulativeSum"],
+    startDate: todayStart,
+    endDate: new Date(),
+    skip: !authorized,
+  });
+
+  // Latest heart rate using the query hook
+  const {
+    data: heartRateData,
+    isLoading: heartRateLoading,
+    refetch: refetchHeartRate,
+  } = useHealthKitQuery({
+    type: "heartRate",
+    kind: "quantity",
+    limit: 1,
+    ascending: false,
+    skip: !authorized,
+  });
+
+  // Real-time subscription to step count changes
+  const { isActive: subscriptionActive } = useHealthKitSubscription({
+    type: "stepCount",
+    onUpdate: () => {
+      // Automatically refetch when HealthKit data changes
+      refetchSteps();
+    },
+    autoStart: authorized,
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Authorization
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const requestAuthorization = async () => {
     try {
@@ -49,111 +108,26 @@ export default function App() {
     }
   };
 
-  const fetchSteps = async () => {
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const result = await AppleHealth.queryStatistics(
-        "stepCount",
-        ["cumulativeSum"],
-        {
-          startDate: today.toISOString(),
-          endDate: new Date().toISOString(),
-        }
-      );
-
-      setSteps(result.sumQuantity ?? 0);
-    } catch (error) {
-      console.error("Fetch steps error:", error);
-      Alert.alert("Error", String(error));
-    }
-  };
-
-  const fetchHeartRate = async () => {
-    try {
-      const samples = await AppleHealth.queryQuantitySamples("heartRate", {
-        limit: 1,
-        ascending: false,
-      });
-
-      if (samples.length > 0) {
-        setHeartRate(Math.round(samples[0].value));
-      }
-    } catch (error) {
-      console.error("Fetch heart rate error:", error);
-      Alert.alert("Error", String(error));
-    }
-  };
-
-  const fetchCharacteristics = async () => {
-    try {
-      const [sex, dob] = await Promise.all([
-        AppleHealth.getBiologicalSex(),
-        AppleHealth.getDateOfBirth(),
-      ]);
-      setBiologicalSex(sex);
-      setDateOfBirth(dob ? new Date(dob).toLocaleDateString() : null);
-    } catch (error) {
-      console.error("Fetch characteristics error:", error);
-      Alert.alert("Error", String(error));
-    }
-  };
-
-  const saveSteps = async () => {
-    try {
-      const now = new Date();
-      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
-
-      await AppleHealth.saveQuantitySample(
-        "stepCount",
-        100,
-        "count",
-        fiveMinutesAgo.toISOString(),
-        now.toISOString()
-      );
-      Alert.alert("Success", "Saved 100 steps");
-    } catch (error) {
-      console.error("Save steps error:", error);
-      Alert.alert("Error", String(error));
-    }
-  };
-
-  const saveWorkout = async () => {
-    try {
-      const now = new Date();
-      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
-
-      await AppleHealth.saveWorkout(
-        "running",
-        thirtyMinutesAgo.toISOString(),
-        now.toISOString(),
-        250,
-        5000
-      );
-      Alert.alert("Success", "Saved 30 min running workout");
-    } catch (error) {
-      console.error("Save workout error:", error);
-      Alert.alert("Error", String(error));
-    }
-  };
+  // ─────────────────────────────────────────────────────────────────────────────
+  // New HealthKitQuery API - Fluent query builder
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const fetchWeeklySteps = async () => {
     try {
       const now = new Date();
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-      const result = await AppleHealth.queryStatisticsCollection(
-        "stepCount",
-        ["cumulativeSum"],
-        {
-          startDate: sevenDaysAgo.toISOString(),
-          endDate: now.toISOString(),
-          interval: "day",
-        }
-      );
+      // New fluent query builder API
+      const query = new HealthKitQuery()
+        .type("stepCount", "statisticsCollection")
+        .dateRange(sevenDaysAgo, now)
+        .aggregations(["cumulativeSum"])
+        .interval("day");
 
-      const summary = result
+      const result = await query.executeStatistics();
+      const stats = Array.isArray(result) ? result : [result];
+
+      const summary = stats
         .map(
           (day) =>
             `${new Date(day.startDate).toLocaleDateString()}: ${Math.round(
@@ -165,6 +139,109 @@ export default function App() {
       Alert.alert("Weekly Steps", summary || "No data");
     } catch (error) {
       console.error("Fetch weekly steps error:", error);
+      Alert.alert("Error", String(error));
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // New Sample Objects API - Query with delete capability
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const fetchRecentSamplesWithDelete = async () => {
+    try {
+      const now = new Date();
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+      // executeSamples() returns shared objects with delete() method
+      const query = new HealthKitQuery()
+        .type("stepCount")
+        .dateRange(oneHourAgo, now)
+        .limit(10)
+        .ascending(false);
+
+      const samples = await query.executeSamples();
+      setRecentSamples(samples as QuantitySample[]);
+
+      Alert.alert("Success", `Fetched ${samples.length} samples (tap to delete)`);
+    } catch (error) {
+      console.error("Fetch samples error:", error);
+      Alert.alert("Error", String(error));
+    }
+  };
+
+  const deleteSample = useCallback(async (sample: QuantitySample) => {
+    try {
+      await sample.delete();
+      setRecentSamples((prev) => prev.filter((s) => s.uuid !== sample.uuid));
+      Alert.alert("Deleted", "Sample removed from HealthKit");
+    } catch (error) {
+      Alert.alert("Error", String(error));
+    }
+  }, []);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // New HealthKitSampleBuilder API - Fluent sample creation
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const saveStepsWithBuilder = async () => {
+    try {
+      const now = new Date();
+      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+      // New fluent builder API
+      const sample = await buildQuantitySample("stepCount")
+        .value(100)
+        .unit("count")
+        .startDate(fiveMinutesAgo)
+        .endDate(now)
+        .save();
+
+      Alert.alert("Success", `Saved ${sample.value} steps`);
+      refetchSteps();
+    } catch (error) {
+      console.error("Save steps error:", error);
+      Alert.alert("Error", String(error));
+    }
+  };
+
+  const saveWorkoutWithBuilder = async () => {
+    try {
+      const now = new Date();
+      const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+
+      // New fluent builder API for workouts
+      const workout = await buildWorkout("running")
+        .startDate(thirtyMinutesAgo)
+        .endDate(now)
+        .totalEnergyBurned(250)
+        .totalDistance(5000)
+        .metadata({ HKIndoorWorkout: false })
+        .save();
+
+      Alert.alert(
+        "Success",
+        `Saved ${Math.round(workout.duration / 60)} min running workout`
+      );
+    } catch (error) {
+      console.error("Save workout error:", error);
+      Alert.alert("Error", String(error));
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Other data fetching
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const fetchCharacteristics = async () => {
+    try {
+      const [sex, dob] = await Promise.all([
+        AppleHealth.getBiologicalSex(),
+        AppleHealth.getDateOfBirth(),
+      ]);
+      setBiologicalSex(sex);
+      setDateOfBirth(dob ? new Date(dob).toLocaleDateString() : null);
+    } catch (error) {
+      console.error("Fetch characteristics error:", error);
       Alert.alert("Error", String(error));
     }
   };
@@ -186,6 +263,15 @@ export default function App() {
       Alert.alert("Error", String(error));
     }
   };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const steps = stepsData?.sumQuantity ?? null;
+  const heartRate = heartRateData?.[0]?.value
+    ? Math.round(heartRateData[0].value)
+    : null;
 
   return (
     <ScrollView
@@ -215,26 +301,76 @@ export default function App() {
         </Text>
       </Group>
 
-      <Group name="Read Data">
-        <Button title="Fetch Today's Steps" onPress={fetchSteps} />
-        <Text style={styles.status}>Steps Today: {steps ?? "Not fetched"}</Text>
+      <Group name="Hooks API (Reactive)">
+        <Text style={styles.apiLabel}>useHealthKitStatistics</Text>
+        <Button
+          title={stepsLoading ? "Loading..." : "Refetch Steps"}
+          onPress={refetchSteps}
+          disabled={!authorized}
+        />
+        <Text style={styles.status}>
+          Steps Today: {steps !== null ? Math.round(steps) : "Not fetched"}
+        </Text>
 
         <View style={styles.spacer} />
 
-        <Button title="Fetch Latest Heart Rate" onPress={fetchHeartRate} />
+        <Text style={styles.apiLabel}>useHealthKitQuery</Text>
+        <Button
+          title={heartRateLoading ? "Loading..." : "Refetch Heart Rate"}
+          onPress={refetchHeartRate}
+          disabled={!authorized}
+        />
         <Text style={styles.status}>
           Heart Rate: {heartRate ? `${heartRate} bpm` : "Not fetched"}
         </Text>
 
         <View style={styles.spacer} />
 
+        <Text style={styles.apiLabel}>useHealthKitSubscription</Text>
+        <Text style={styles.status}>
+          Real-time Updates: {subscriptionActive ? "Active" : "Inactive"}
+        </Text>
+      </Group>
+
+      <Group name="Query Builder API">
+        <Text style={styles.apiLabel}>new HealthKitQuery()</Text>
         <Button title="Fetch Weekly Steps" onPress={fetchWeeklySteps} />
       </Group>
 
-      <Group name="Write Data">
-        <Button title="Save 100 Steps" onPress={saveSteps} />
+      <Group name="Sample Objects (with delete)">
+        <Text style={styles.apiLabel}>query.executeSamples()</Text>
+        <Button
+          title="Fetch Recent Samples"
+          onPress={fetchRecentSamplesWithDelete}
+        />
+        {recentSamples.length > 0 && (
+          <View style={styles.sampleList}>
+            <Text style={styles.sampleHeader}>
+              Tap a sample to delete it:
+            </Text>
+            {recentSamples.map((sample) => (
+              <TouchableOpacity
+                key={sample.uuid}
+                style={styles.sampleItem}
+                onPress={() => deleteSample(sample)}
+              >
+                <Text style={styles.sampleText}>
+                  {Math.round(sample.value)} {sample.unit}
+                </Text>
+                <Text style={styles.sampleDate}>
+                  {new Date(sample.startDate).toLocaleTimeString()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </Group>
+
+      <Group name="Sample Builder API">
+        <Text style={styles.apiLabel}>buildQuantitySample() / buildWorkout()</Text>
+        <Button title="Save 100 Steps" onPress={saveStepsWithBuilder} />
         <View style={styles.spacer} />
-        <Button title="Save Running Workout" onPress={saveWorkout} />
+        <Button title="Save Running Workout" onPress={saveWorkoutWithBuilder} />
       </Group>
 
       <Group name="Activity Rings">
@@ -260,14 +396,16 @@ export default function App() {
         </View>
         <View style={styles.ringsContainer}>
           <ActivityRingView
-            summary={{
-              activeEnergyBurned: 0,
-              activeEnergyBurnedGoal: 500,
-              appleExerciseTime: 0,
-              appleExerciseTimeGoal: 30,
-              appleStandHours: 0,
-              appleStandHoursGoal: 12,
-            }}
+            summary={
+              activitySummary ?? {
+                activeEnergyBurned: 0,
+                activeEnergyBurnedGoal: 500,
+                appleExerciseTime: 0,
+                appleExerciseTimeGoal: 30,
+                appleStandHours: 0,
+                appleStandHoursGoal: 12,
+              }
+            }
             style={styles.activityRings}
           />
         </View>
@@ -353,5 +491,36 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: "row",
     gap: 8,
+  },
+  apiLabel: {
+    fontSize: 12,
+    color: "#007AFF",
+    fontFamily: "Menlo",
+    marginBottom: 8,
+  },
+  sampleList: {
+    marginTop: 12,
+  },
+  sampleHeader: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 8,
+  },
+  sampleItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+    backgroundColor: "#f8f8f8",
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  sampleText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  sampleDate: {
+    fontSize: 12,
+    color: "#666",
   },
 });
