@@ -5,7 +5,7 @@
   "main": "source/index.ts",
   "types": "build/index.d.ts",
   "bin": {
-    "healthkit": "cli/index.ts"
+    "apple-health": "cli/index.ts"
   },
   "scripts": {
     "build": "expo-module build",
@@ -30,7 +30,7 @@
   "bugs": {
     "url": "https://github.com/EvanBacon/apple-health/issues"
   },
-  "author": "evanbacon <baconbrix@gmail.com> (EvanBacon)",
+  "author": "Evan Bacon <baconbrix@gmail.com> (EvanBacon)",
   "license": "MIT",
   "homepage": "https://github.com/EvanBacon/apple-health#readme",
   "dependencies": {

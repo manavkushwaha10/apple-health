@@ -25,7 +25,7 @@ async function authStatus(
     if (flags.json) {
       console.log(JSON.stringify({ status }, null, 2));
     } else {
-      console.log("\nAuthorization Status");
+      console.log("\nAuthorization Status (write permissions only)");
       console.log("─".repeat(50));
       for (const [type, authStatus] of Object.entries(status)) {
         const icon =
@@ -36,6 +36,7 @@ async function authStatus(
             : "\x1b[33m?\x1b[0m";
         console.log(`  ${icon} ${type}: ${authStatus}`);
       }
+      console.log("\nNote: HealthKit hides read status for privacy. Query data to verify.");
     }
 
     await client.disconnect();
@@ -101,6 +102,10 @@ async function authRequest(flags: AuthRequestFlags): Promise<void> {
       console.log(JSON.stringify({ read: readTypes, write: writeTypes, ...result }, null, 2));
     } else {
       console.log(`Authorization request completed: ${result.status}`);
+      if (readTypes.length > 0) {
+        console.log("\nNote: HealthKit hides read permission status for privacy.");
+        console.log("Query the data to verify read access works.");
+      }
     }
 
     await client.disconnect();

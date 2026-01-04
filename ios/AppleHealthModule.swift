@@ -3,10 +3,22 @@ import HealthKit
 import HealthKitUI
 
 public class AppleHealthModule: Module {
-  private lazy var healthStore: HKHealthStore? = {
-    guard HKHealthStore.isHealthDataAvailable() else { return nil }
-    return HKHealthStore()
-  }()
+  private let healthStoreLock = NSLock()
+  private var _healthStore: HKHealthStore?
+  private var healthStoreInitialized = false
+
+  private var healthStore: HKHealthStore? {
+    healthStoreLock.lock()
+    defer { healthStoreLock.unlock() }
+
+    if !healthStoreInitialized {
+      healthStoreInitialized = true
+      if HKHealthStore.isHealthDataAvailable() {
+        _healthStore = HKHealthStore()
+      }
+    }
+    return _healthStore
+  }
 
   private let dateFormatter: ISO8601DateFormatter = {
     let formatter = ISO8601DateFormatter()
