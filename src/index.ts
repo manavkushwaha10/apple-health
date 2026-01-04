@@ -4,14 +4,7 @@ export { ActivityRingView } from "./ActivityRingView";
 export type { ActivityRingViewProps } from "./ActivityRingView";
 
 // Shared object query builder
-export {
-  HealthKitQuery,
-  queryQuantity,
-  queryCategory,
-  queryWorkouts,
-  queryStatistics,
-  queryStatisticsCollection,
-} from "./HealthKitQuery";
+export { HealthKitQuery } from "./HealthKitQuery";
 export type {
   HealthKitQueryConfig,
   QueryKind,
@@ -32,12 +25,7 @@ export { HealthKitSubscription, HealthKitAnchor } from "./HealthKitSubscription"
 export type { AnchorKind, AnchoredQueryResult } from "./HealthKitSubscription";
 
 // Sample builder for creating and saving samples
-export {
-  HealthKitSampleBuilder,
-  buildQuantitySample,
-  buildCategorySample,
-  buildWorkout,
-} from "./HealthKitSampleBuilder";
+export { HealthKitSampleBuilder } from "./HealthKitSampleBuilder";
 
 // React hooks
 export {

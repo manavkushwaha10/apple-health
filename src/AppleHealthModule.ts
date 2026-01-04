@@ -6,15 +6,6 @@ import {
   HealthKitPermissions,
   QuantityTypeIdentifier,
   CategoryTypeIdentifier,
-  WorkoutActivityType,
-  QueryOptions,
-  StatisticsOptions,
-  StatisticsAggregation,
-  QuantitySample,
-  CategorySample,
-  WorkoutSample,
-  StatisticsResult,
-  AnchoredQueryResult,
   ActivitySummary,
 } from './AppleHealth.types';
 
@@ -31,88 +22,6 @@ declare class AppleHealthModule extends NativeModule<AppleHealthModuleEvents> {
 
   requestAuthorization(permissions: HealthKitPermissions): Promise<AuthorizationResult>;
   getAuthorizationStatus(dataTypes: string[]): Promise<Record<string, string>>;
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Quantity Samples
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  queryQuantitySamples(
-    typeIdentifier: QuantityTypeIdentifier,
-    options?: QueryOptions
-  ): Promise<QuantitySample[]>;
-
-  saveQuantitySample(
-    typeIdentifier: QuantityTypeIdentifier,
-    value: number,
-    unit: string,
-    startDate: string,
-    endDate: string,
-    metadata?: Record<string, unknown>
-  ): Promise<boolean>;
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Category Samples
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  queryCategorySamples(
-    typeIdentifier: CategoryTypeIdentifier,
-    options?: QueryOptions
-  ): Promise<CategorySample[]>;
-
-  saveCategorySample(
-    typeIdentifier: CategoryTypeIdentifier,
-    value: number,
-    startDate: string,
-    endDate: string,
-    metadata?: Record<string, unknown>
-  ): Promise<boolean>;
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Statistics
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  queryStatistics(
-    typeIdentifier: QuantityTypeIdentifier,
-    aggregations: StatisticsAggregation[],
-    options?: QueryOptions
-  ): Promise<StatisticsResult>;
-
-  queryStatisticsCollection(
-    typeIdentifier: QuantityTypeIdentifier,
-    aggregations: StatisticsAggregation[],
-    options: StatisticsOptions
-  ): Promise<StatisticsResult[]>;
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Anchored Queries
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  queryQuantitySamplesWithAnchor(
-    typeIdentifier: QuantityTypeIdentifier,
-    anchor?: string | null,
-    limit?: number
-  ): Promise<AnchoredQueryResult<QuantitySample>>;
-
-  queryCategorySamplesWithAnchor(
-    typeIdentifier: CategoryTypeIdentifier,
-    anchor?: string | null,
-    limit?: number
-  ): Promise<AnchoredQueryResult<CategorySample>>;
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Workouts
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  queryWorkouts(options?: QueryOptions): Promise<WorkoutSample[]>;
-
-  saveWorkout(
-    activityType: WorkoutActivityType,
-    startDate: string,
-    endDate: string,
-    totalEnergyBurned?: number,
-    totalDistance?: number,
-    metadata?: Record<string, unknown>
-  ): Promise<boolean>;
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Activity Summary

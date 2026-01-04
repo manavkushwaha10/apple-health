@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { useDevToolsPluginClient } from "expo/devtools";
 import AppleHealth from "../AppleHealthModule";
+import { HealthKitQuery } from "../HealthKitQuery";
+import { HealthKitSampleBuilder } from "../HealthKitSampleBuilder";
 import type {
   QuantityTypeIdentifier,
   CategoryTypeIdentifier,
@@ -39,47 +41,60 @@ export function useHealthKitDevTools() {
           switch (type) {
             // Query handlers
             case "queryQuantitySamples": {
-              const samples = await AppleHealth.queryQuantitySamples(
-                payload.type as QuantityTypeIdentifier,
-                payload.options as QueryOptions | undefined
-              );
+              const options = payload.options as QueryOptions | undefined;
+              const query = new HealthKitQuery()
+                .type(payload.type as QuantityTypeIdentifier, "quantity")
+                .dateRange(options?.startDate, options?.endDate);
+              if (options?.limit) query.limit(options.limit);
+              if (options?.ascending !== undefined) query.ascending(options.ascending);
+              const samples = await query.execute();
               sendResult(samples);
               break;
             }
 
             case "queryCategorySamples": {
-              const samples = await AppleHealth.queryCategorySamples(
-                payload.type as CategoryTypeIdentifier,
-                payload.options as QueryOptions | undefined
-              );
+              const options = payload.options as QueryOptions | undefined;
+              const query = new HealthKitQuery()
+                .type(payload.type as CategoryTypeIdentifier, "category")
+                .dateRange(options?.startDate, options?.endDate);
+              if (options?.limit) query.limit(options.limit);
+              if (options?.ascending !== undefined) query.ascending(options.ascending);
+              const samples = await query.execute();
               sendResult(samples);
               break;
             }
 
             case "queryWorkouts": {
-              const samples = await AppleHealth.queryWorkouts(
-                payload.options as QueryOptions | undefined
-              );
+              const options = payload.options as QueryOptions | undefined;
+              const query = new HealthKitQuery()
+                .type("workout", "workout")
+                .dateRange(options?.startDate, options?.endDate);
+              if (options?.limit) query.limit(options.limit);
+              if (options?.ascending !== undefined) query.ascending(options.ascending);
+              const samples = await query.execute();
               sendResult(samples);
               break;
             }
 
             case "queryStatistics": {
-              const result = await AppleHealth.queryStatistics(
-                payload.type as QuantityTypeIdentifier,
-                payload.aggregations as StatisticsAggregation[],
-                payload.options as QueryOptions | undefined
-              );
+              const options = payload.options as QueryOptions | undefined;
+              const query = new HealthKitQuery()
+                .type(payload.type as QuantityTypeIdentifier, "statistics")
+                .dateRange(options?.startDate, options?.endDate)
+                .aggregations(payload.aggregations as StatisticsAggregation[]);
+              const result = await query.executeStatistics();
               sendResult(result);
               break;
             }
 
             case "queryStatisticsCollection": {
-              const result = await AppleHealth.queryStatisticsCollection(
-                payload.type as QuantityTypeIdentifier,
-                payload.aggregations as StatisticsAggregation[],
-                payload.options as StatisticsOptions
-              );
+              const options = payload.options as StatisticsOptions;
+              const query = new HealthKitQuery()
+                .type(payload.type as QuantityTypeIdentifier, "statisticsCollection")
+                .dateRange(options?.startDate, options?.endDate)
+                .aggregations(payload.aggregations as StatisticsAggregation[])
+                .interval(options.interval);
+              const result = await query.executeStatistics();
               sendResult(result);
               break;
             }
@@ -95,40 +110,40 @@ export function useHealthKitDevTools() {
 
             // Write handlers
             case "saveQuantitySample": {
-              const success = await AppleHealth.saveQuantitySample(
-                payload.type as QuantityTypeIdentifier,
-                payload.value as number,
-                payload.unit as string,
-                payload.startDate as string,
-                payload.endDate as string,
-                payload.metadata as Record<string, unknown> | undefined
-              );
-              sendResult({ success });
+              const builder = new HealthKitSampleBuilder()
+                .quantityType(payload.type as QuantityTypeIdentifier)
+                .value(payload.value as number)
+                .unit(payload.unit as string)
+                .startDate(payload.startDate as string)
+                .endDate(payload.endDate as string);
+              if (payload.metadata) builder.metadata(payload.metadata as Record<string, unknown>);
+              const sample = await builder.save();
+              sendResult({ success: true, sample });
               break;
             }
 
             case "saveCategorySample": {
-              const success = await AppleHealth.saveCategorySample(
-                payload.type as CategoryTypeIdentifier,
-                payload.value as number,
-                payload.startDate as string,
-                payload.endDate as string,
-                payload.metadata as Record<string, unknown> | undefined
-              );
-              sendResult({ success });
+              const builder = new HealthKitSampleBuilder()
+                .categoryType(payload.type as CategoryTypeIdentifier)
+                .categoryValue(payload.value as number)
+                .startDate(payload.startDate as string)
+                .endDate(payload.endDate as string);
+              if (payload.metadata) builder.metadata(payload.metadata as Record<string, unknown>);
+              const sample = await builder.save();
+              sendResult({ success: true, sample });
               break;
             }
 
             case "saveWorkout": {
-              const success = await AppleHealth.saveWorkout(
-                payload.activityType as WorkoutActivityType,
-                payload.startDate as string,
-                payload.endDate as string,
-                payload.energy as number | undefined,
-                payload.distance as number | undefined,
-                payload.metadata as Record<string, unknown> | undefined
-              );
-              sendResult({ success });
+              const builder = new HealthKitSampleBuilder()
+                .workoutType(payload.activityType as WorkoutActivityType)
+                .startDate(payload.startDate as string)
+                .endDate(payload.endDate as string);
+              if (payload.energy) builder.totalEnergyBurned(payload.energy as number);
+              if (payload.distance) builder.totalDistance(payload.distance as number);
+              if (payload.metadata) builder.metadata(payload.metadata as Record<string, unknown>);
+              const sample = await builder.save();
+              sendResult({ success: true, sample });
               break;
             }
 
