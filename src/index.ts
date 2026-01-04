@@ -31,6 +31,14 @@ export type { HealthKitSample } from "./HealthKitSample";
 export { HealthKitSubscription, HealthKitAnchor } from "./HealthKitSubscription";
 export type { AnchorKind, AnchoredQueryResult } from "./HealthKitSubscription";
 
+// Sample builder for creating and saving samples
+export {
+  HealthKitSampleBuilder,
+  buildQuantitySample,
+  buildCategorySample,
+  buildWorkout,
+} from "./HealthKitSampleBuilder";
+
 // React hooks
 export {
   useHealthKitQuery,

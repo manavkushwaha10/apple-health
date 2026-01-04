@@ -259,6 +259,68 @@ public class AppleHealthModule: Module {
       }
     }
 
+    Class(HealthKitSampleBuilder.self) {
+      Constructor {
+        return HealthKitSampleBuilder()
+      }
+
+      Function("setQuantityType") { (builder: HealthKitSampleBuilder, identifier: String) in
+        builder.setQuantityType(identifier)
+      }
+
+      Function("setCategoryType") { (builder: HealthKitSampleBuilder, identifier: String) in
+        builder.setCategoryType(identifier)
+      }
+
+      Function("setWorkoutType") { (builder: HealthKitSampleBuilder, activityType: String) in
+        builder.setWorkoutType(activityType)
+      }
+
+      Function("setValue") { (builder: HealthKitSampleBuilder, value: Double) in
+        builder.setValue(value)
+      }
+
+      Function("setCategoryValue") { (builder: HealthKitSampleBuilder, value: Int) in
+        builder.setCategoryValue(value)
+      }
+
+      Function("setUnit") { (builder: HealthKitSampleBuilder, unit: String) in
+        builder.setUnit(unit)
+      }
+
+      Function("setStartDate") { (builder: HealthKitSampleBuilder, dateString: String) in
+        builder.setStartDate(dateString)
+      }
+
+      Function("setEndDate") { (builder: HealthKitSampleBuilder, dateString: String) in
+        builder.setEndDate(dateString)
+      }
+
+      Function("setMetadata") { (builder: HealthKitSampleBuilder, metadata: [String: Any]?) in
+        builder.setMetadata(metadata)
+      }
+
+      Function("setTotalEnergyBurned") { (builder: HealthKitSampleBuilder, value: Double) in
+        builder.setTotalEnergyBurned(value)
+      }
+
+      Function("setTotalDistance") { (builder: HealthKitSampleBuilder, value: Double) in
+        builder.setTotalDistance(value)
+      }
+
+      Function("reset") { (builder: HealthKitSampleBuilder) in
+        builder.reset()
+      }
+
+      AsyncFunction("save") { (builder: HealthKitSampleBuilder) -> [String: Any] in
+        return try await builder.save()
+      }
+
+      AsyncFunction("saveSample") { (builder: HealthKitSampleBuilder) -> HealthKitSample in
+        return try await builder.saveSample()
+      }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────────
     // Views
     // ─────────────────────────────────────────────────────────────────────────────
