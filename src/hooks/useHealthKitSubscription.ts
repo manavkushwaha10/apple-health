@@ -5,9 +5,8 @@ import { requireNativeModule } from 'expo';
 import type {
   QuantityTypeIdentifier,
   CategoryTypeIdentifier,
-  QuantitySample,
-  CategorySample,
 } from '../AppleHealth.types';
+import type { HealthKitSample } from '../HealthKitSample';
 import { HealthKitSubscription, HealthKitAnchor, AnchorKind } from '../HealthKitSubscription';
 
 interface AppleHealthModuleEvents {
@@ -41,29 +40,28 @@ export interface UseHealthKitSubscriptionResult {
 }
 
 /**
- * React hook for subscribing to HealthKit data changes.
- * Automatically manages subscription lifecycle.
+ * React hook for real-time HealthKit change notifications.
+ *
+ * Notifies you when data changes so you can refetch.
+ * Does NOT fetch data itself - combine with `useHealthKitQuery`.
+ *
+ * For **paginated data sync**, use `useHealthKitAnchor` instead.
  *
  * @example
  * ```tsx
  * function HeartRateMonitor() {
- *   const [updates, setUpdates] = useState(0);
- *
- *   const { isActive, pause, resume } = useHealthKitSubscription({
+ *   const { data, refetch } = useHealthKitQuery({
  *     type: 'heartRate',
- *     onUpdate: () => {
- *       setUpdates(n => n + 1);
- *       // Refetch data here
- *     },
+ *     limit: 10,
  *   });
  *
- *   return (
- *     <View>
- *       <Text>Updates: {updates}</Text>
- *       <Button title={isActive ? "Pause" : "Resume"}
- *               onPress={isActive ? pause : resume} />
- *     </View>
- *   );
+ *   // Refetch when HealthKit data changes
+ *   useHealthKitSubscription({
+ *     type: 'heartRate',
+ *     onUpdate: refetch,
+ *   });
+ *
+ *   return <Text>Latest: {data?.[0]?.value} bpm</Text>;
  * }
  * ```
  */
@@ -153,9 +151,9 @@ export interface UseHealthKitAnchorConfig {
   skip?: boolean;
 }
 
-export interface UseHealthKitAnchorResult<T> {
-  /** Accumulated samples from all fetches */
-  samples: T[];
+export interface UseHealthKitAnchorResult {
+  /** Accumulated samples from all fetches (with delete() method) */
+  samples: HealthKitSample[];
   /** UUIDs of deleted samples */
   deletedObjects: Array<{ uuid: string }>;
   /** Whether there are more samples to fetch */
@@ -173,31 +171,46 @@ export interface UseHealthKitAnchorResult<T> {
 }
 
 /**
- * React hook for incremental syncing with HealthKit using anchored queries.
- * Maintains anchor state and accumulates samples across fetches.
+ * React hook for paginated incremental sync with HealthKit.
+ *
+ * Fetches data in batches and tracks sync state. Ideal for loading
+ * large datasets or syncing to a local database.
+ *
+ * For **real-time notifications**, use `useHealthKitSubscription` instead.
+ *
+ * Returns sample objects with methods like `delete()` and `toJSON()`.
  *
  * @example
  * ```tsx
  * function SyncedSteps() {
- *   const { samples, hasMore, fetchMore, isLoading } = useHealthKitAnchor({
+ *   const { samples, hasMore, fetchMore, isLoading, deletedObjects } = useHealthKitAnchor({
  *     type: 'stepCount',
  *     limit: 50,
  *   });
+ *
+ *   // Handle deletions
+ *   useEffect(() => {
+ *     for (const { uuid } of deletedObjects) {
+ *       removeFromLocalDB(uuid);
+ *     }
+ *   }, [deletedObjects]);
  *
  *   return (
  *     <FlatList
  *       data={samples}
  *       onEndReached={() => hasMore && !isLoading && fetchMore()}
- *       renderItem={({ item }) => <Text>{item.value} steps</Text>}
+ *       renderItem={({ item }) => (
+ *         <Text>{item.__typename === 'QuantitySample' ? `${item.value} steps` : ''}</Text>
+ *       )}
  *     />
  *   );
  * }
  * ```
  */
-export function useHealthKitAnchor<T = QuantitySample | CategorySample>(
+export function useHealthKitAnchor(
   config: UseHealthKitAnchorConfig
-): UseHealthKitAnchorResult<T> {
-  const [samples, setSamples] = useState<T[]>([]);
+): UseHealthKitAnchorResult {
+  const [samples, setSamples] = useState<HealthKitSample[]>([]);
   const [deletedObjects, setDeletedObjects] = useState<Array<{ uuid: string }>>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(!config.skip);
@@ -223,7 +236,7 @@ export function useHealthKitAnchor<T = QuantitySample | CategorySample>(
     setError(null);
 
     try {
-      const result = await anchorRef.current.fetchNext<T>(limit);
+      const result = await anchorRef.current.fetchNext(limit);
 
       setSamples((prev) => [...prev, ...result.samples]);
       setDeletedObjects((prev) => [...prev, ...result.deletedObjects]);

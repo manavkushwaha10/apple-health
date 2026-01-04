@@ -1,6 +1,7 @@
 import { requireNativeModule } from 'expo';
 
 import type { QuantityTypeIdentifier, CategoryTypeIdentifier } from './AppleHealth.types';
+import { wrapNativeSamples, type HealthKitSample } from './HealthKitSample';
 
 // Native shared object interfaces
 interface NativeHealthKitSubscription {
@@ -22,7 +23,6 @@ interface NativeHealthKitAnchor {
   restore(serialized: string): boolean;
   serialize(): string | null;
   reset(): void;
-  fetchNext(limit: number): Promise<AnchorFetchResult>;
   fetchNextSamples(limit: number): Promise<AnchorFetchResult>;
 }
 
@@ -42,17 +42,28 @@ const AppleHealthModule =
   requireNativeModule<AppleHealthModuleWithSubscription>('AppleHealth');
 
 /**
- * A subscription to HealthKit data changes.
- * Automatically unsubscribes when garbage collected.
+ * Real-time observer for HealthKit data changes.
+ *
+ * Use this when you need **push notifications** about data changes.
+ * Does NOT fetch data - use with `useHealthKitQuery` to refetch on updates.
+ *
+ * For **paginated data fetching**, use `HealthKitAnchor` instead.
  *
  * @example
  * ```ts
  * const subscription = new HealthKitSubscription('heartRate');
  * subscription.start();
  *
- * // Later...
- * subscription.pause();  // Temporarily stop callbacks
- * subscription.resume(); // Resume callbacks
+ * // Listen for changes via module events
+ * AppleHealth.addListener('onHealthKitUpdate', (event) => {
+ *   if (event.typeIdentifier === 'heartRate') {
+ *     // Refetch your data here
+ *   }
+ * });
+ *
+ * // Control the subscription
+ * subscription.pause();     // Temporarily stop callbacks
+ * subscription.resume();    // Resume callbacks
  * subscription.unsubscribe(); // Stop completely
  * ```
  */
@@ -111,9 +122,9 @@ export class HealthKitSubscription {
 
 export type AnchorKind = 'quantity' | 'category';
 
-export interface AnchoredQueryResult<T> {
-  /** New or updated samples */
-  samples: T[];
+export interface AnchoredQueryResult {
+  /** New or updated samples (shared objects with delete() method) */
+  samples: HealthKitSample[];
   /** UUIDs of deleted samples */
   deletedObjects: Array<{ uuid: string }>;
   /** Whether there are more samples to fetch */
@@ -121,26 +132,38 @@ export interface AnchoredQueryResult<T> {
 }
 
 /**
- * Manages anchored query state for incremental syncing.
- * The anchor state can be serialized for persistence across app sessions.
+ * Paginated incremental sync for HealthKit data.
+ *
+ * Use this when you need to **fetch data in batches** and track what
+ * you've already synced. Ideal for syncing to a local database.
+ *
+ * For **real-time change notifications**, use `HealthKitSubscription` instead.
+ *
+ * Key features:
+ * - Fetch data incrementally with pagination
+ * - Track deleted samples (for sync)
+ * - Serialize/restore anchor state for persistence
  *
  * @example
  * ```ts
  * const anchor = new HealthKitAnchor('stepCount');
  *
- * // Fetch initial batch
- * const { samples, hasMore } = await anchor.fetchNext(100);
+ * // Fetch batches until done
+ * while (anchor.hasMore) {
+ *   const { samples, deletedObjects } = await anchor.fetchNext(100);
  *
- * // Save anchor state
- * const serialized = anchor.serialize();
- * await AsyncStorage.setItem('steps-anchor', serialized);
- *
- * // Later, restore and continue syncing
- * const savedAnchor = await AsyncStorage.getItem('steps-anchor');
- * if (savedAnchor) {
- *   anchor.restore(savedAnchor);
+ *   // Sync to local DB
+ *   await db.upsertSamples(samples.map(s => s.toJSON()));
+ *   await db.deleteSamples(deletedObjects.map(d => d.uuid));
  * }
- * const { samples: newSamples } = await anchor.fetchNext(100);
+ *
+ * // Save anchor for next session
+ * const state = anchor.serialize();
+ * await AsyncStorage.setItem('steps-anchor', state);
+ *
+ * // Later: restore and sync only new changes
+ * anchor.restore(await AsyncStorage.getItem('steps-anchor'));
+ * const { samples } = await anchor.fetchNext(100);
  * ```
  */
 export class HealthKitAnchor {
@@ -195,28 +218,38 @@ export class HealthKitAnchor {
   }
 
   /**
-   * Fetch the next batch of samples as plain records.
-   * @param limit Maximum number of samples to fetch
+   * Fetch the next batch of samples.
+   *
+   * Returns sample objects with methods like `delete()` and `toJSON()`.
+   *
+   * @param limit Maximum number of samples to fetch (default: 100)
+   *
+   * @example
+   * ```ts
+   * const { samples, hasMore, deletedObjects } = await anchor.fetchNext(50);
+   *
+   * // Process new/updated samples
+   * for (const sample of samples) {
+   *   if (sample.__typename === 'QuantitySample') {
+   *     console.log(`${sample.value} ${sample.unit}`);
+   *   }
+   * }
+   *
+   * // Handle deleted samples
+   * for (const { uuid } of deletedObjects) {
+   *   removeFromLocalDB(uuid);
+   * }
+   *
+   * // Continue fetching if more available
+   * if (hasMore) {
+   *   const more = await anchor.fetchNext(50);
+   * }
+   * ```
    */
-  async fetchNext<T = Record<string, unknown>>(
-    limit: number = 100
-  ): Promise<AnchoredQueryResult<T>> {
-    const result = await this.native.fetchNext(limit);
-    return {
-      samples: result.samples as T[],
-      deletedObjects: result.deletedObjects,
-      hasMore: result.hasMore,
-    };
-  }
-
-  /**
-   * Fetch the next batch of samples as shared objects with delete() method.
-   * @param limit Maximum number of samples to fetch
-   */
-  async fetchNextSamples(limit: number = 100): Promise<AnchoredQueryResult<unknown>> {
+  async fetchNext(limit: number = 100): Promise<AnchoredQueryResult> {
     const result = await this.native.fetchNextSamples(limit);
     return {
-      samples: result.samples,
+      samples: wrapNativeSamples(result.samples),
       deletedObjects: result.deletedObjects,
       hasMore: result.hasMore,
     };
