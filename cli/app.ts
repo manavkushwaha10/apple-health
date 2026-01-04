@@ -7,6 +7,8 @@ import { typesCommand } from "./commands/types";
 import { characteristicsCommand } from "./commands/characteristics";
 import { deleteCommand } from "./commands/delete";
 import { statusCommand } from "./commands/status";
+import { batchCommand } from "./commands/batch";
+import { replCommand } from "./commands/repl";
 
 const routes = buildRouteMap({
   routes: {
@@ -18,6 +20,8 @@ const routes = buildRouteMap({
     characteristics: characteristicsCommand,
     delete: deleteCommand,
     status: statusCommand,
+    batch: batchCommand,
+    repl: replCommand,
   },
   docs: {
     brief: "HealthKit CLI - Query and write health data via Expo devtools",

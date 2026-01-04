@@ -1,9 +1,11 @@
 import { buildCommand } from "@stricli/core";
 import { getClient } from "../../client";
+import { parseRelativeDate, parseDuration } from "../../utils/dates";
 
 interface WorkoutWriteFlags {
-  start: string;
-  end: string;
+  start?: string;
+  end?: string;
+  duration?: string;
   energy?: number;
   distance?: number;
   metadata?: string;
@@ -28,10 +30,23 @@ async function writeWorkout(
       }
     }
 
+    // Parse dates with relative date support
+    const startDate = parseRelativeDate(flags.start ?? "-1h");
+    let endDate: string;
+
+    if (flags.duration) {
+      endDate = parseDuration(new Date(startDate), flags.duration);
+    } else if (flags.end) {
+      endDate = parseRelativeDate(flags.end);
+    } else {
+      // Default to 30 min workout
+      endDate = parseDuration(new Date(startDate), "30m");
+    }
+
     const result = await client.saveWorkout(
       activityType,
-      flags.start,
-      flags.end,
+      startDate,
+      endDate,
       flags.energy,
       flags.distance,
       metadata
@@ -42,8 +57,8 @@ async function writeWorkout(
         JSON.stringify(
           {
             activityType,
-            start: flags.start,
-            end: flags.end,
+            start: startDate,
+            end: endDate,
             energy: flags.energy,
             distance: flags.distance,
             ...result,
@@ -88,12 +103,20 @@ export const workoutCommand = buildCommand({
       start: {
         kind: "parsed",
         parse: String,
-        brief: "Start date (ISO8601)",
+        brief: "Start date (e.g., '-1h', 'today 8am', ISO8601)",
+        optional: true,
       },
       end: {
         kind: "parsed",
         parse: String,
-        brief: "End date (ISO8601)",
+        brief: "End date (e.g., 'now', 'today 9am', ISO8601)",
+        optional: true,
+      },
+      duration: {
+        kind: "parsed",
+        parse: String,
+        brief: "Duration (e.g., '30m', '1h', '1h30m')",
+        optional: true,
       },
       energy: {
         kind: "parsed",

@@ -1,9 +1,11 @@
 import { buildCommand } from "@stricli/core";
 import { getClient } from "../../client";
+import { parseRelativeDate, parseDuration } from "../../utils/dates";
 
 interface CategoryWriteFlags {
-  start: string;
+  start?: string;
   end?: string;
+  duration?: string;
   metadata?: string;
   json: boolean;
   port: number;
@@ -27,11 +29,21 @@ async function writeCategory(
       }
     }
 
+    // Parse dates with relative date support
+    const startDate = parseRelativeDate(flags.start ?? "now");
+    let endDate: string | undefined;
+
+    if (flags.duration) {
+      endDate = parseDuration(new Date(startDate), flags.duration);
+    } else if (flags.end) {
+      endDate = parseRelativeDate(flags.end);
+    }
+
     const result = await client.saveCategorySample(
       type,
       value,
-      flags.start,
-      flags.end,
+      startDate,
+      endDate,
       metadata
     );
 
@@ -75,12 +87,19 @@ export const categoryCommand = buildCommand({
       start: {
         kind: "parsed",
         parse: String,
-        brief: "Start date (ISO8601)",
+        brief: "Start date (e.g., 'now', 'today 8am', '-1d', ISO8601)",
+        optional: true,
       },
       end: {
         kind: "parsed",
         parse: String,
-        brief: "End date (ISO8601, defaults to start)",
+        brief: "End date (e.g., 'now', 'today 9am', ISO8601)",
+        optional: true,
+      },
+      duration: {
+        kind: "parsed",
+        parse: String,
+        brief: "Duration from start (e.g., '1h', '30m', '8h')",
         optional: true,
       },
       metadata: {

@@ -1,10 +1,13 @@
 import { buildCommand } from "@stricli/core";
 import { getClient } from "../../client";
+import { parseRelativeDate, parseDuration } from "../../utils/dates";
+import { QUANTITY_TYPE_INFO } from "../../utils/types";
 
 interface QuantityWriteFlags {
-  unit: string;
-  start: string;
+  unit?: string;
+  start?: string;
   end?: string;
+  duration?: string;
   metadata?: string;
   json: boolean;
   port: number;
@@ -28,20 +31,38 @@ async function writeQuantity(
       }
     }
 
+    // Determine unit - use provided or lookup default
+    const unit = flags.unit ?? QUANTITY_TYPE_INFO[type]?.unit;
+    if (!unit) {
+      console.error(`Error: No unit specified and no default for "${type}"`);
+      console.error("Use --unit to specify the unit");
+      process.exit(1);
+    }
+
+    // Parse dates with relative date support
+    const startDate = parseRelativeDate(flags.start ?? "now");
+    let endDate: string | undefined;
+
+    if (flags.duration) {
+      endDate = parseDuration(new Date(startDate), flags.duration);
+    } else if (flags.end) {
+      endDate = parseRelativeDate(flags.end);
+    }
+
     const result = await client.saveQuantitySample(
       type,
       value,
-      flags.unit,
-      flags.start,
-      flags.end,
+      unit,
+      startDate,
+      endDate,
       metadata
     );
 
     if (flags.json) {
-      console.log(JSON.stringify({ type, value, unit: flags.unit, ...result }, null, 2));
+      console.log(JSON.stringify({ type, value, unit, ...result }, null, 2));
     } else {
       if (result.success) {
-        console.log(`Saved ${type}: ${value} ${flags.unit}`);
+        console.log(`Saved ${type}: ${value} ${unit}`);
       } else {
         console.log(`Failed to save ${type}`);
       }
@@ -77,17 +98,25 @@ export const quantityCommand = buildCommand({
       unit: {
         kind: "parsed",
         parse: String,
-        brief: "Unit (e.g., count, count/min, kg)",
+        brief: "Unit (auto-detected for common types)",
+        optional: true,
       },
       start: {
         kind: "parsed",
         parse: String,
-        brief: "Start date (ISO8601)",
+        brief: "Start date (e.g., 'now', 'today 8am', '-1d', ISO8601)",
+        optional: true,
       },
       end: {
         kind: "parsed",
         parse: String,
-        brief: "End date (ISO8601, defaults to start)",
+        brief: "End date (e.g., 'now', 'today 9am', ISO8601)",
+        optional: true,
+      },
+      duration: {
+        kind: "parsed",
+        parse: String,
+        brief: "Duration from start (e.g., '1h', '30m', '1d')",
         optional: true,
       },
       metadata: {
