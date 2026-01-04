@@ -2,7 +2,7 @@ Expo module for interacting with Apple HealthKit on Apple devices.
 
 ## Progress
 
-- [ ] Docs for usage and setup instructions
+- [x] Docs for usage and setup instructions
 - [x] Marshalling-style API for reading and writing health data
 - [x] Querying API (samples, statistics, statistics collections, anchored queries)
 - [x] HealthKit UI elements https://developer.apple.com/documentation/healthkitui
