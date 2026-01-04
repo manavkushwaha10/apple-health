@@ -24,13 +24,14 @@ const routes = buildRouteMap({
     repl: replCommand,
   },
   docs: {
-    brief: "HealthKit CLI - Query and write health data via Expo devtools",
+    brief:
+      "Apple HealthKit CLI - Query and write health data via Expo devtools",
     hideRoute: {},
   },
 });
 
 export const app = buildApplication(routes, {
-  name: "healthkit",
+  name: "apple-health",
   versionInfo: {
     currentVersion: "1.0.0",
   },

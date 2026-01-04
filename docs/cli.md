@@ -128,18 +128,40 @@ EOF
 ### Batch Format
 
 **Quantity samples:**
+
 ```json
-{"kind":"quantity","type":"heartRate","value":72,"unit":"count/min","start":"today 8am"}
+{
+  "kind": "quantity",
+  "type": "heartRate",
+  "value": 72,
+  "unit": "count/min",
+  "start": "today 8am"
+}
 ```
 
 **Category samples:**
+
 ```json
-{"kind":"category","type":"sleepAnalysis","value":3,"start":"-8h","duration":"7h"}
+{
+  "kind": "category",
+  "type": "sleepAnalysis",
+  "value": 3,
+  "start": "-8h",
+  "duration": "7h"
+}
 ```
 
 **Workouts:**
+
 ```json
-{"kind":"workout","activityType":"running","start":"-1h","duration":"30m","energy":250,"distance":5000}
+{
+  "kind": "workout",
+  "activityType": "running",
+  "start": "-1h",
+  "duration": "30m",
+  "energy": 250,
+  "distance": 5000
+}
 ```
 
 ## Interactive REPL
@@ -151,91 +173,91 @@ bunx apple-health repl
 ```
 
 ```
-healthkit> write quantity heartRate 72
+apple-health> write quantity heartRate 72
 Saved heartRate: 72 count/min
 
-healthkit> write quantity stepCount 3000 yesterday 1d
+apple-health> write quantity stepCount 3000 yesterday 1d
 Saved stepCount: 3000 count
 
-healthkit> query quantity heartRate 5
+apple-health> query quantity heartRate 5
 heartRate (5 samples):
   1/4/2026, 2:00:00 PM: 72 count/min
   1/4/2026, 12:00:00 PM: 85 count/min
   ...
 
-healthkit> stats stepCount day
+apple-health> stats stepCount day
 Statistics for stepCount (day):
   2026-01-03: sum=3102 count
   2026-01-04: sum=5847 count
 
-healthkit> types heart
+apple-health> types heart
 Quantity Types:
   heartRate, restingHeartRate, walkingHeartRateAverage, heartRateVariabilitySDNN, heartRateRecoveryOneMinute
 
-healthkit> exit
+apple-health> exit
 ```
 
 ### REPL Commands
 
-| Command | Description |
-|---------|-------------|
-| `write quantity <type> <value> [time] [duration]` | Write quantity sample |
-| `write category <type> <value> [time] [duration]` | Write category sample |
-| `write workout <activity> [time] [duration]` | Write workout |
-| `query quantity <type> [limit]` | Query quantity samples |
-| `query category <type> [limit]` | Query category samples |
-| `query workouts [limit]` | Query workouts |
-| `stats <type> [interval]` | Get statistics |
-| `types [filter]` | List types (optionally filtered) |
-| `help` | Show help |
-| `exit` | Exit REPL |
+| Command                                           | Description                      |
+| ------------------------------------------------- | -------------------------------- |
+| `write quantity <type> <value> [time] [duration]` | Write quantity sample            |
+| `write category <type> <value> [time] [duration]` | Write category sample            |
+| `write workout <activity> [time] [duration]`      | Write workout                    |
+| `query quantity <type> [limit]`                   | Query quantity samples           |
+| `query category <type> [limit]`                   | Query category samples           |
+| `query workouts [limit]`                          | Query workouts                   |
+| `stats <type> [interval]`                         | Get statistics                   |
+| `types [filter]`                                  | List types (optionally filtered) |
+| `help`                                            | Show help                        |
+| `exit`                                            | Exit REPL                        |
 
 ## Date Formats
 
 The CLI supports flexible date formats:
 
-| Format | Example | Description |
-|--------|---------|-------------|
-| `now` | `--start now` | Current time |
-| `today` | `--start today` | Start of today |
-| `yesterday` | `--start yesterday` | Start of yesterday |
-| `tomorrow` | `--start tomorrow` | Start of tomorrow |
-| Relative days | `--start "-1d"` | 1 day ago |
-| Relative hours | `--start "-2h"` | 2 hours ago |
-| Relative minutes | `--start "-30m"` | 30 minutes ago |
-| Day + time | `--start "today 8am"` | Today at 8:00 AM |
-| Day + time | `--start "yesterday 10:30pm"` | Yesterday at 10:30 PM |
-| Date only | `--start "2026-01-04"` | Start of that day |
-| ISO8601 | `--start "2026-01-04T08:00:00Z"` | Exact timestamp |
+| Format           | Example                          | Description           |
+| ---------------- | -------------------------------- | --------------------- |
+| `now`            | `--start now`                    | Current time          |
+| `today`          | `--start today`                  | Start of today        |
+| `yesterday`      | `--start yesterday`              | Start of yesterday    |
+| `tomorrow`       | `--start tomorrow`               | Start of tomorrow     |
+| Relative days    | `--start "-1d"`                  | 1 day ago             |
+| Relative hours   | `--start "-2h"`                  | 2 hours ago           |
+| Relative minutes | `--start "-30m"`                 | 30 minutes ago        |
+| Day + time       | `--start "today 8am"`            | Today at 8:00 AM      |
+| Day + time       | `--start "yesterday 10:30pm"`    | Yesterday at 10:30 PM |
+| Date only        | `--start "2026-01-04"`           | Start of that day     |
+| ISO8601          | `--start "2026-01-04T08:00:00Z"` | Exact timestamp       |
 
 ### Duration Format
 
-| Format | Example | Description |
-|--------|---------|-------------|
-| Minutes | `--duration 30m` | 30 minutes |
-| Hours | `--duration 2h` | 2 hours |
-| Days | `--duration 1d` | 1 day |
+| Format   | Example            | Description       |
+| -------- | ------------------ | ----------------- |
+| Minutes  | `--duration 30m`   | 30 minutes        |
+| Hours    | `--duration 2h`    | 2 hours           |
+| Days     | `--duration 1d`    | 1 day             |
 | Combined | `--duration 1h30m` | 1 hour 30 minutes |
 
 ## Available Types
 
 ### Quantity Types (with default units)
 
-| Category | Types |
-|----------|-------|
-| Body | `bodyMass` (kg), `height` (m), `bodyFatPercentage` (%), `bodyMassIndex` |
-| Fitness | `stepCount`, `distanceWalkingRunning` (m), `activeEnergyBurned` (kcal), `flightsClimbed`, `appleExerciseTime` (min) |
-| Vitals | `heartRate` (count/min), `restingHeartRate`, `bloodPressureSystolic` (mmHg), `oxygenSaturation` (%), `respiratoryRate` |
-| Nutrition | `dietaryCaffeine` (mg), `dietaryWater` (mL), `dietaryEnergyConsumed` (kcal), `dietaryProtein` (g) |
+| Category  | Types                                                                                                                  |
+| --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Body      | `bodyMass` (kg), `height` (m), `bodyFatPercentage` (%), `bodyMassIndex`                                                |
+| Fitness   | `stepCount`, `distanceWalkingRunning` (m), `activeEnergyBurned` (kcal), `flightsClimbed`, `appleExerciseTime` (min)    |
+| Vitals    | `heartRate` (count/min), `restingHeartRate`, `bloodPressureSystolic` (mmHg), `oxygenSaturation` (%), `respiratoryRate` |
+| Nutrition | `dietaryCaffeine` (mg), `dietaryWater` (mL), `dietaryEnergyConsumed` (kcal), `dietaryProtein` (g)                      |
 
 ### Category Types
 
-| Category | Types | Values |
-|----------|-------|--------|
-| Sleep | `sleepAnalysis` | 0=inBed, 2=awake, 3=core, 4=deep, 5=REM |
-| Symptoms | `headache`, `fatigue`, `nausea`, `dizziness`, etc. | 0=notPresent, 1=mild, 2=moderate, 3=severe |
-| Heart | `highHeartRateEvent`, `lowHeartRateEvent`, `irregularHeartRhythmEvent` | 0=notSet |
-| Mindfulness | `mindfulSession` | 0 |
+| Category    | Types                                                                  | Values                                     |
+| ----------- | ---------------------------------------------------------------------- | ------------------------------------------ |
+| Sleep       | `sleepAnalysis`                                                        | 0=inBed, 2=awake, 3=core, 4=deep, 5=REM    |
+| Symptoms    | `headache`, `fatigue`, `nausea`, `dizziness`, etc.                     | 0=notPresent, 1=mild, 2=moderate, 3=severe |
+| Heart       | `highHeartRateEvent`, `lowHeartRateEvent`, `irregularHeartRhythmEvent` | 0=notSet                                   |
+| Mindfulness | `mindfulSession`                                                       | 0                                          |
 
 ### Workout Types
 
@@ -247,10 +269,10 @@ Use `bunx apple-health types` to see all available types.
 
 All commands support these flags:
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--port` | Expo devtools port | 8081 |
-| `--json` | Output as JSON | false |
+| Flag     | Description        | Default |
+| -------- | ------------------ | ------- |
+| `--port` | Expo devtools port | 8081    |
+| `--json` | Output as JSON     | false   |
 
 ## Notes
 

@@ -80,6 +80,52 @@ public class AppleHealthModule: Module {
     Events("onHealthKitUpdate", "onBackgroundDelivery")
 
     // ─────────────────────────────────────────────────────────────────────────────
+    // Shared Objects
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    Class(HealthKitQuery.self) {
+      Constructor {
+        return HealthKitQuery()
+      }
+
+      Function("setType") { (query: HealthKitQuery, identifier: String, kind: String) in
+        query.setType(identifier, kind: kind)
+      }
+
+      Function("setDateRange") { (query: HealthKitQuery, start: String?, end: String?) in
+        query.setDateRange(start: start, end: end)
+      }
+
+      Function("setLimit") { (query: HealthKitQuery, limit: Int) in
+        query.setLimit(limit)
+      }
+
+      Function("setAscending") { (query: HealthKitQuery, ascending: Bool) in
+        query.setAscending(ascending)
+      }
+
+      Function("setAggregations") { (query: HealthKitQuery, aggregations: [String]) in
+        query.setAggregations(aggregations)
+      }
+
+      Function("setInterval") { (query: HealthKitQuery, interval: String) in
+        query.setInterval(interval)
+      }
+
+      AsyncFunction("execute") { (query: HealthKitQuery) -> [[String: Any]] in
+        return try await query.execute()
+      }
+
+      AsyncFunction("executeStatistics") { (query: HealthKitQuery) -> Any in
+        return try await query.executeStatistics()
+      }
+
+      Function("release") { (query: HealthKitQuery) in
+        query.release()
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
     // Views
     // ─────────────────────────────────────────────────────────────────────────────
 
