@@ -262,18 +262,26 @@ export function wrapNativeSample(native: unknown): HealthKitSample {
     }
   }
 
-  // Fallback to property-based detection for backwards compatibility
-  if ("quantityType" in sample && sample.quantityType) {
-    return new QuantitySample(sample as NativeQuantitySample);
-  }
+  // Fallback to property-based detection
+  // Note: Native shared object properties aren't enumerable, so we check
+  // by accessing the property directly instead of using the 'in' operator
+  try {
+    if (sample.quantityType) {
+      return new QuantitySample(sample as NativeQuantitySample);
+    }
+  } catch {}
 
-  if ("categoryType" in sample && sample.categoryType) {
-    return new CategorySample(sample as NativeCategorySample);
-  }
+  try {
+    if (sample.categoryType) {
+      return new CategorySample(sample as NativeCategorySample);
+    }
+  } catch {}
 
-  if ("workoutActivityType" in sample && sample.workoutActivityType) {
-    return new WorkoutSample(sample as NativeWorkoutSample);
-  }
+  try {
+    if (sample.workoutActivityType) {
+      return new WorkoutSample(sample as NativeWorkoutSample);
+    }
+  } catch {}
 
   throw new Error("Unknown sample type");
 }

@@ -601,7 +601,7 @@ public class AppleHealthModule: Module {
 
       let opts = options ?? QueryOptions()
       let predicate = self.createPredicate(startDate: opts.startDate, endDate: opts.endDate)
-      let statisticsOptions = self.statisticsOptions(from: aggregations)
+      let statisticsOptions = self.statisticsOptions(from: aggregations, for: quantityType)
 
       return try await withCheckedThrowingContinuation { continuation in
         let query = HKStatisticsQuery(
@@ -635,7 +635,7 @@ public class AppleHealthModule: Module {
       }
 
       let predicate = self.createPredicate(startDate: options.startDate, endDate: options.endDate)
-      let statisticsOptions = self.statisticsOptions(from: aggregations)
+      let statisticsOptions = self.statisticsOptions(from: aggregations, for: quantityType)
       let interval = self.dateComponents(for: options.interval)
 
       guard let startDate = options.startDate.flatMap({ self.parseDate($0) }) ?? Calendar.current.date(byAdding: .day, value: -7, to: Date()),
@@ -1004,18 +1004,44 @@ public class AppleHealthModule: Module {
     return nil
   }
 
-  private func statisticsOptions(from aggregations: [String]) -> HKStatisticsOptions {
+  private func statisticsOptions(from aggregations: [String], for quantityType: HKQuantityType) -> HKStatisticsOptions {
+    let isCumulative = quantityType.aggregationStyle == .cumulative
     var options: HKStatisticsOptions = []
+
     for agg in aggregations {
       switch agg {
-      case "cumulativeSum": options.insert(.cumulativeSum)
-      case "discreteAverage": options.insert(.discreteAverage)
-      case "discreteMin": options.insert(.discreteMin)
-      case "discreteMax": options.insert(.discreteMax)
-      case "mostRecent": options.insert(.mostRecent)
-      default: break
+      case "cumulativeSum", "sum":
+        if isCumulative {
+          options.insert(.cumulativeSum)
+        }
+      case "discreteAverage", "average":
+        if !isCumulative {
+          options.insert(.discreteAverage)
+        }
+      case "discreteMin", "min":
+        if !isCumulative {
+          options.insert(.discreteMin)
+        }
+      case "discreteMax", "max":
+        if !isCumulative {
+          options.insert(.discreteMax)
+        }
+      case "mostRecent":
+        options.insert(.mostRecent)
+      default:
+        break
       }
     }
+
+    // Ensure we have at least one valid option based on the type's aggregation style
+    if options.isEmpty {
+      if isCumulative {
+        options.insert(.cumulativeSum)
+      } else {
+        options.insert(.discreteAverage)
+      }
+    }
+
     return options
   }
 

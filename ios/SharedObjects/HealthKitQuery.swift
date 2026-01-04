@@ -306,7 +306,7 @@ public final class HealthKitQuery: SharedObject {
     }
 
     let predicate = createPredicate()
-    let options = statisticsOptions(from: aggregations)
+    let options = statisticsOptions(from: aggregations, for: quantityType)
 
     return try await withCheckedThrowingContinuation { continuation in
       let query = HKStatisticsQuery(
@@ -338,7 +338,7 @@ public final class HealthKitQuery: SharedObject {
     }
 
     let predicate = createPredicate()
-    let options = statisticsOptions(from: aggregations)
+    let options = statisticsOptions(from: aggregations, for: quantityType)
 
     let queryStartDate = startDate ?? Calendar.current.date(byAdding: .day, value: -7, to: Date())!
     let queryEndDate = endDate ?? Date()
@@ -407,18 +407,44 @@ public final class HealthKitQuery: SharedObject {
     return nil
   }
 
-  private func statisticsOptions(from aggregations: [String]) -> HKStatisticsOptions {
+  private func statisticsOptions(from aggregations: [String], for quantityType: HKQuantityType) -> HKStatisticsOptions {
+    let isCumulative = quantityType.aggregationStyle == .cumulative
     var options: HKStatisticsOptions = []
+
     for agg in aggregations {
       switch agg {
-      case "cumulativeSum", "sum": options.insert(.cumulativeSum)
-      case "discreteAverage", "average": options.insert(.discreteAverage)
-      case "discreteMin", "min": options.insert(.discreteMin)
-      case "discreteMax", "max": options.insert(.discreteMax)
-      case "mostRecent": options.insert(.mostRecent)
-      default: break
+      case "cumulativeSum", "sum":
+        if isCumulative {
+          options.insert(.cumulativeSum)
+        }
+      case "discreteAverage", "average":
+        if !isCumulative {
+          options.insert(.discreteAverage)
+        }
+      case "discreteMin", "min":
+        if !isCumulative {
+          options.insert(.discreteMin)
+        }
+      case "discreteMax", "max":
+        if !isCumulative {
+          options.insert(.discreteMax)
+        }
+      case "mostRecent":
+        options.insert(.mostRecent)
+      default:
+        break
       }
     }
+
+    // Ensure we have at least one valid option based on the type's aggregation style
+    if options.isEmpty {
+      if isCumulative {
+        options.insert(.cumulativeSum)
+      } else {
+        options.insert(.discreteAverage)
+      }
+    }
+
     return options
   }
 
