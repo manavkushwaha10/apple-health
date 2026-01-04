@@ -152,6 +152,27 @@ struct SampleConverters {
     return result
   }
 
+  // MARK: - Activity Summary
+
+  static func convertActivitySummary(_ summary: HKActivitySummary) -> [String: Any] {
+    let calendar = Calendar.current
+    let dateComponents = summary.dateComponents(for: calendar)
+
+    return [
+      "dateComponents": [
+        "year": dateComponents.year ?? 0,
+        "month": dateComponents.month ?? 0,
+        "day": dateComponents.day ?? 0
+      ],
+      "activeEnergyBurned": summary.activeEnergyBurned.doubleValue(for: .kilocalorie()),
+      "activeEnergyBurnedGoal": summary.activeEnergyBurnedGoal.doubleValue(for: .kilocalorie()),
+      "appleExerciseTime": summary.appleExerciseTime.doubleValue(for: .minute()),
+      "appleExerciseTimeGoal": summary.appleExerciseTimeGoal.doubleValue(for: .minute()),
+      "appleStandHours": summary.appleStandHours.doubleValue(for: .count()),
+      "appleStandHoursGoal": summary.appleStandHoursGoal.doubleValue(for: .count())
+    ]
+  }
+
   // MARK: - Metadata
 
   static func convertMetadata(_ metadata: [String: Any]) -> [String: Any] {

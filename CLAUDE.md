@@ -1,226 +1,97 @@
 Expo module for interacting with Apple HealthKit on Apple devices.
 
-- [ ] Marshalling-style API for reading and writing health data
-- [ ] Fantastic querying API. Consider APIs like Bun.sql https://bun.com/docs/runtime/sql and TanStack query.
+## Progress
+
+- [x] Marshalling-style API for reading and writing health data
+- [x] Querying API (samples, statistics, statistics collections, anchored queries)
 - [ ] HealthKit UI elements https://developer.apple.com/documentation/healthkitui
-- [ ] Config Plugin for setting up HealthKit permissions and entitlements
-- [ ] Permissions that follow Expo's permission model
+- [x] Config Plugin for setting up HealthKit permissions and entitlements
+- [x] Permissions that follow Expo's permission model
 - [ ] Docs for usage and setup instructions
-- [ ] TypeScript typings for all methods and options
+- [x] TypeScript typings for all methods and options
+- [x] Real-time subscriptions (observer queries)
+- [x] Background delivery support
 - [ ] Debugging UI for interacting with data
 
-## Great module standards
+## Implemented Features
 
-- Design native APIs as if you contributing W3C specs for the browser, take inspiration from modern web modules. eg `std:kv-storage`, `clipboard`.
-- Aim for 100% backwards compatibility like the web.
-- Create escape hatches for single-platform functionality.
-- Avoid extraneous abstractions. Directly expose native functionality.
-- Avoid unnecessary async methods. Use sync methods when possible.
-- Prefer string union types for API options instead of boolean flags, enums, or multiple parameters. eg instead of `capture(options: { isHighQuality: boolean })`, use `capture(options: { quality: 'high' | 'medium' | 'low' })`.
-- Marshalling is awesome for platform-specific APIs.
-- New Architecture only. NEVER support legacy React Native architecture.
-- ALWAYS use only Expo modules API.
-- Prefer Swift and Kotlin.
-- Use optionality for availability checks as opposed to extraneous `isAvailable` functions or constants. eg `snapshot.capture?.()` instead of `snapshot.isAvailable && snapshot.capture()`.
-- ALWAYS support the latest and greatest API features.
+### Authorization
 
-Example of a GREAT Expo module:
+- `isAvailable()` - Check if HealthKit is available
+- `requestAuthorization({ read, write })` - Request permissions
+- `getAuthorizationStatus(types)` - Check authorization status for types
 
-```ts
-import { NativeModule, requireOptionalNativeModule } from "expo";
+### Characteristics (read-only)
 
-declare class AppClipModule extends NativeModule<{}> {
-  prompt(): void;
-  isAppClip?: boolean;
-}
+- `getDateOfBirth()`, `getBiologicalSex()`, `getBloodType()`
+- `getFitzpatrickSkinType()`, `getWheelchairUse()`, `getActivityMoveMode()`
 
-// This call loads the native module object from the JSI.
-const AppClipNative = requireOptionalNativeModule<AppClipModule>("AppClip");
+### Queries
 
-if (AppClipNative?.isAppClip) {
-  navigator.appClip = {
-    prompt: AppClipNative.prompt,
-  };
-}
+- `queryQuantitySamples(type, options)` - Query quantity samples
+- `queryCategorySamples(type, options)` - Query category samples
+- `queryWorkouts(options)` - Query workouts
+- `queryStatistics(type, aggregations, options)` - Single statistics query
+- `queryStatisticsCollection(type, aggregations, options)` - Time-bucketed statistics
+- `queryQuantitySamplesWithAnchor(type, anchor, limit)` - Incremental sync
+- `queryCategorySamplesWithAnchor(type, anchor, limit)` - Incremental sync
 
-// Add types for the global `navigator.appClip` object.
-declare global {
-  interface Navigator {
-    /**
-     * Only available in an App Clip context.
-     * @expo
-     */
-    appClip?: {
-      /** Open the SKOverlay */
-      prompt: () => void;
-    };
-  }
-}
+### Writing
 
-export {};
-```
+- `saveQuantitySample(type, value, unit, startDate, endDate, metadata?)`
+- `saveCategorySample(type, value, startDate, endDate, metadata?)`
+- `saveWorkout(activityType, startDate, endDate, energy?, distance?, metadata?)`
+- `deleteSamples(type, startDate, endDate)`
 
-- Simple web-style interface.
-- Global type augmentation for easy access.
-- Docs in the type definitions.
-- Optional availability checks instead of extraneous `isAvailable` methods.
+### Subscriptions & Background
 
-Example of a POOR Expo module:
+- `subscribeToChanges(type)` - Real-time observer queries
+- `unsubscribe(subscriptionId)` - Remove subscription
+- `enableBackgroundDelivery(type, frequency)` - Background updates
+- `disableBackgroundDelivery(type)` / `disableAllBackgroundDelivery()`
 
-```ts
-import { NativeModulesProxy } from "expo-modules-core";
-const { ExpoAppClip } = NativeModulesProxy;
-export default {
-  promptAppClip() {
-    return ExpoAppClip.promptAppClip();
-  },
-  isAppClipAvailable() {
-    return ExpoAppClip.isAppClipAvailable();
-  },
-};
-```
+### Events
 
-## Great documentation
+- `onHealthKitUpdate` - Fired when subscribed data changes
+- `onBackgroundDelivery` - Fired for background delivery updates
 
-- If you have a function like `isAvailable()`, explain why it exists in the docs. Research cases where it may return false such as in a simulator or particular OS version.
-- Document OS version availability for functions and constants in the type definitions.
-
-## Views
-
-Prefer functions on views instead of `useImperativeHandle` + `findNodeHandle`.
-
-```swift
-AsyncFunction("capture") { (view, options: Options) -> Ref in
-  return try capture(self.appContext, view)
-}
-```
-
-## Marshalling-style API
-
-Consider this example https://github.com/EvanBacon/expo-shared-objects-haptics-example/blob/be90e92f8dba9b0807009502ab25c423c57e640d/modules/my-module/ios/MyModule.swift#L1C1-L178C2
-
-Using `@retroactive Convertible` and `AnyArgument` to convert between Swift types and dictionaries enables passing complex data structures across the boundary without writing custom serialization code for each type.
-
-```swift
-extension CHHapticEventParameter: @retroactive Convertible, AnyArgument {
-    public static func convert(from value: Any?, appContext: AppContext) throws -> Self {
-        guard let dict = value as? [String: Any],
-              let parameterIDRaw = dict["parameterID"] as? String,
-              let value = dict["value"] as? Double else {
-            throw NotADictionaryException()
-        }
-        return Self(parameterID: CHHapticEvent.ParameterID(rawValue: parameterIDRaw), value: Float(value))
-    }
-}
-
-extension CHHapticEvent: @retroactive Convertible, AnyArgument {
-    public static func convert(from value: Any?, appContext: AppContext) throws -> Self {
-        guard let dict = value as? [String: Any],
-              let eventTypeRaw = dict["eventType"] as? String,
-              let relativeTime = dict["relativeTime"] as? Double else {
-            throw NotADictionaryException()
-        }
-        let eventType = CHHapticEvent.EventType(rawValue: eventTypeRaw)
-        let parameters = (dict["parameters"] as? [[String: Any]])?.compactMap { paramDict -> CHHapticEventParameter? in
-            try? CHHapticEventParameter.convert(from: paramDict, appContext: appContext)
-        } ?? []
-        return Self(eventType: eventType, parameters: parameters, relativeTime: relativeTime)
-    }
-}
-
-extension CHHapticDynamicParameter: @retroactive Convertible, AnyArgument {
-    public static func convert(from value: Any?, appContext: AppContext) throws -> Self {
-        guard let dict = value as? [String: Any],
-              let parameterIDRaw = dict["parameterID"] as? String,
-              let value = dict["value"] as? Double,
-              let relativeTime = dict["relativeTime"] as? Double else {
-            throw NotADictionaryException()
-        }
-
-        return Self(parameterID: CHHapticDynamicParameter.ID(rawValue: parameterIDRaw), value: Float(value), relativeTime: relativeTime)
-    }
-}
-
-extension CHHapticPattern: @retroactive Convertible, AnyArgument {
-    public static func convert(from value: Any?, appContext: AppContext) throws -> Self {
-        guard let dict = value as? [String: Any],
-              let eventsArray = dict["events"] as? [[String: Any]] else {
-            throw NotADictionaryException()
-        }
-        let events = try eventsArray.map { eventDict -> CHHapticEvent in
-            try CHHapticEvent.convert(from: eventDict, appContext: appContext)
-        }
-        let parameters = (dict["parameters"] as? [[String: Any]])?.compactMap { paramDict -> CHHapticDynamicParameter? in
-            return try? CHHapticDynamicParameter.convert(from: paramDict, appContext: appContext)
-        } ?? []
-        return try Self(events: events, parameters: parameters)
-    }
-}
-
-internal final class NotAnArrayException: Exception {
-    override var reason: String {
-        "Given value is not an array"
-    }
-}
-
-internal final class IncorrectArraySizeException: GenericException<(expected: Int, actual: Int)> {
-    override var reason: String {
-        "Given array has unexpected number of elements: \(param.actual), expected: \(param.expected)"
-    }
-}
-
-internal final class NotADictionaryException: Exception {
-    override var reason: String {
-        "Given value is not a dictionary"
-    }
-}
+## File Structure
 
 ```
+ios/
+├── AppleHealthModule.swift          # Main module (~700 lines)
+├── AppleHealth.podspec
+├── Types/
+│   ├── TypeIdentifiers.swift        # 100+ HK type mappings
+│   ├── UnitMapping.swift            # Unit string → HKUnit
+│   └── SampleConverters.swift       # HKSample → Dictionary
+├── Queries/
+│   └── ObserverQueryManager.swift   # Subscription management
+└── Exceptions/
+    └── HealthKitExceptions.swift    # Custom error types
 
-Later this can be used to implement methods that accept complex data structures as arguments.
+src/
+├── index.ts                         # Public exports
+├── AppleHealthModule.ts             # Native module declaration
+└── AppleHealth.types.ts             # TypeScript definitions
 
-```swift
-Function("playPattern") { (pattern: CHHapticPattern) in
-    let player = try hapticEngine.makePlayer(with: pattern)
-    try player.start(atTime: 0)
-}
+plugin/src/
+├── index.ts                         # Plugin entry
+├── withHealthKit.ts                 # Combined plugin
+├── withHealthKitEntitlements.ts     # Entitlements
+├── withHealthKitInfoPlist.ts        # Info.plist
+└── withHealthKitBackgroundModes.ts  # Background modes
 ```
 
-## Interacting with AppDelegate
+## Known Issues
 
-To interact with HealthKit, the module may need to respond to app lifecycle events. This can be done by implementing the `ExpoAppDelegateSubscriber` protocol.
+- iOS 16+ types (e.g., `runningPower`, `underwaterDepth`) require `#available` checks
+- Dates must include fractional seconds for ISO8601 parsing (handled internally)
 
-```swift
-import ExpoModulesCore
+## Coding
 
-public class ExpoHeadAppDelegateSubscriber: ExpoAppDelegateSubscriber {
-
-// Any AppDelegate methods you want to implement
-  public func application(
-    _ application: UIApplication,
-    continue userActivity: NSUserActivity,
-    restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
-  ) -> Bool {
-    launchedActivity = userActivity
-
-   // ...
-
-    return false
-  }
-}
-```
-
-Then add the subscriber to the `expo-module.config.json`:
-
-```json
-{
-  "platforms": ["apple", "android", "web"],
-  "apple": {
-    "modules": ["ExpoHeadModule", ...],
-    "appDelegateSubscribers": ["ExpoHeadAppDelegateSubscriber"]
-  }
-}
-```
+- ALWAYS use the skills/expo-modules/SKILL.md guidelines when working on the module.
+- ALWAYS use the skills/device-testing/SKILL.md guidelines when verifying the module works.
 
 ## Verification
 

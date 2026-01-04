@@ -1,5 +1,6 @@
 import ExpoModulesCore
 import HealthKit
+import HealthKitUI
 
 public class AppleHealthModule: Module {
   private lazy var healthStore: HKHealthStore? = {
@@ -17,6 +18,16 @@ public class AppleHealthModule: Module {
     Name("AppleHealth")
 
     Events("onHealthKitUpdate", "onBackgroundDelivery")
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Views
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    View(ActivityRingView.self) {
+      Prop("summary") { (view: ActivityRingView, summary: [String: Any]?) in
+        view.setSummary(summary)
+      }
+    }
 
     // ─────────────────────────────────────────────────────────────────────────────
     // Availability
@@ -536,6 +547,42 @@ public class AppleHealthModule: Module {
 
       try await store.save(workout)
       return true
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Activity Summary
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    AsyncFunction("queryActivitySummary") { (startDate: String, endDate: String) -> [[String: Any]] in
+      guard let store = self.healthStore else {
+        throw HealthKitNotAvailableException()
+      }
+      guard let start = self.dateFormatter.date(from: startDate),
+            let end = self.dateFormatter.date(from: endDate) else {
+        throw InvalidDateException()
+      }
+
+      let calendar = Calendar.current
+      let startComponents = calendar.dateComponents([.year, .month, .day], from: start)
+      let endComponents = calendar.dateComponents([.year, .month, .day], from: end)
+
+      let predicate = HKQuery.predicate(forActivitySummariesBetweenStart: startComponents, end: endComponents)
+
+      return try await withCheckedThrowingContinuation { continuation in
+        let query = HKActivitySummaryQuery(predicate: predicate) { _, summaries, error in
+          if let error = error {
+            continuation.resume(throwing: error)
+            return
+          }
+
+          let results = summaries?.map { summary in
+            SampleConverters.convertActivitySummary(summary)
+          } ?? []
+
+          continuation.resume(returning: results)
+        }
+        store.execute(query)
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
