@@ -129,7 +129,26 @@ public class AppleHealthModule: Module {
       }
     }
 
+    // Base class definition - enables polymorphic return types
+    Class(HealthKitSample.self) {
+      Property("uuid") { (sample: HealthKitSample) in sample.uuid }
+      Property("startDate") { (sample: HealthKitSample) in sample.startDate }
+      Property("endDate") { (sample: HealthKitSample) in sample.endDate }
+      Property("sourceName") { (sample: HealthKitSample) in sample.sourceName }
+      Property("sourceId") { (sample: HealthKitSample) in sample.sourceId }
+      Property("metadata") { (sample: HealthKitSample) in sample.metadata }
+
+      AsyncFunction("delete") { (sample: HealthKitSample) -> Bool in
+        return try await sample.delete()
+      }
+
+      Function("toJSON") { (sample: HealthKitSample) -> [String: Any] in
+        return sample.toJSON()
+      }
+    }
+
     Class(QuantitySampleObject.self) {
+      Property("__typename") { (sample: QuantitySampleObject) in sample.__typename }
       Property("uuid") { (sample: QuantitySampleObject) in sample.uuid }
       Property("quantityType") { (sample: QuantitySampleObject) in sample.quantityType }
       Property("value") { (sample: QuantitySampleObject) in sample.value }
@@ -151,6 +170,7 @@ public class AppleHealthModule: Module {
     }
 
     Class(CategorySampleObject.self) {
+      Property("__typename") { (sample: CategorySampleObject) in sample.__typename }
       Property("uuid") { (sample: CategorySampleObject) in sample.uuid }
       Property("categoryType") { (sample: CategorySampleObject) in sample.categoryType }
       Property("value") { (sample: CategorySampleObject) in sample.value }
@@ -170,6 +190,7 @@ public class AppleHealthModule: Module {
     }
 
     Class(WorkoutSampleObject.self) {
+      Property("__typename") { (sample: WorkoutSampleObject) in sample.__typename }
       Property("uuid") { (sample: WorkoutSampleObject) in sample.uuid }
       Property("workoutActivityType") { (sample: WorkoutSampleObject) in sample.workoutActivityType }
       Property("duration") { (sample: WorkoutSampleObject) in sample.duration }

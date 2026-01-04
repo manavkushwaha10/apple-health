@@ -86,6 +86,11 @@ public final class QuantitySampleObject: HealthKitSample {
   private var cachedValue: Double = 0
   private var cachedUnit: String = ""
 
+  /// Type discriminator for JavaScript
+  var __typename: String {
+    return "QuantitySample"
+  }
+
   /// Create from native sample
   static func create(from sample: HKQuantitySample, typeIdentifier: String) -> QuantitySampleObject {
     let obj = QuantitySampleObject()
@@ -158,6 +163,11 @@ public final class CategorySampleObject: HealthKitSample {
   private var typeId: String = ""
   private var cachedValue: Int = 0
 
+  /// Type discriminator for JavaScript
+  var __typename: String {
+    return "CategorySample"
+  }
+
   /// Create from native sample
   static func create(from sample: HKCategorySample, typeIdentifier: String) -> CategorySampleObject {
     let obj = CategorySampleObject()
@@ -212,6 +222,11 @@ public final class WorkoutSampleObject: HealthKitSample {
   private var cachedDuration: Double = 0
   private var cachedEnergyBurned: Double?
   private var cachedDistance: Double?
+
+  /// Type discriminator for JavaScript
+  var __typename: String {
+    return "WorkoutSample"
+  }
 
   /// Create from native sample
   static func create(from workout: HKWorkout) -> WorkoutSampleObject {

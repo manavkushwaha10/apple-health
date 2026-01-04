@@ -1,11 +1,11 @@
 import AppleHealth, {
   ActivityRingView,
-  HealthKitQuery,
   HealthKitSampleBuilder,
 } from "apple-health";
 import { useHealthKitDevTools } from "apple-health/dev-tools";
 import {
   usePermissions,
+  useHealthKitQuery,
   useHealthKitStatistics,
   PermissionStatus,
 } from "apple-health/hooks";
@@ -37,6 +37,7 @@ export default function App() {
       <PermissionsSection />
       <CharacteristicsSection />
       <StepsSection />
+      <SleepSection />
       <ActivityRingsSection />
     </ScrollView>
   );
@@ -70,6 +71,7 @@ function PermissionsSection() {
     read: [
       "stepCount",
       "heartRate",
+      "sleepAnalysis",
       "biologicalSex",
       "dateOfBirth",
       "activitySummaryType",
@@ -151,20 +153,22 @@ function CharacteristicsSection() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. Steps - Query and write step data
+// 4. Steps - Query and write step data using useHealthKitStatistics
 // ─────────────────────────────────────────────────────────────────────────────
 
 function StepsSection() {
+  const [showWeekly, setShowWeekly] = useState(false);
+
   // Get today's start
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  // Use the statistics hook for today's steps
+  // Today's steps (single statistic)
   const {
     data: todayStats,
-    isLoading,
-    error,
-    refetch,
+    isLoading: todayLoading,
+    error: todayError,
+    refetch: refetchToday,
   } = useHealthKitStatistics({
     type: "stepCount",
     aggregations: ["cumulativeSum"],
@@ -172,9 +176,25 @@ function StepsSection() {
     endDate: new Date(),
   });
 
+  // Weekly steps (with interval - returns array)
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const {
+    data: weeklyStats,
+    isLoading: weeklyLoading,
+    refetch: refetchWeekly,
+  } = useHealthKitStatistics({
+    type: "stepCount",
+    aggregations: ["cumulativeSum"],
+    interval: "day",
+    startDate: weekAgo,
+    endDate: new Date(),
+  });
+
   const todaySteps = todayStats && !Array.isArray(todayStats)
     ? Math.round(todayStats.sumQuantity ?? 0)
     : 0;
+
+  const weeklyData = Array.isArray(weeklyStats) ? weeklyStats : [];
 
   // Save steps using the builder
   const saveSteps = async () => {
@@ -191,37 +211,8 @@ function StepsSection() {
         .save();
 
       Alert.alert("Success", "Added 100 steps");
-      refetch();
-    } catch (err) {
-      Alert.alert("Error", String(err));
-    }
-  };
-
-  // Query weekly steps using HealthKitQuery
-  const fetchWeeklySteps = async () => {
-    try {
-      const now = new Date();
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-      const result = await new HealthKitQuery()
-        .type("stepCount", "statistics")
-        .dateRange(weekAgo, now)
-        .aggregations(["cumulativeSum"])
-        .interval("day")
-        .executeStatistics();
-
-      const stats = Array.isArray(result) ? result : [result];
-      const summary = stats
-        .map((day) => {
-          const date = new Date(day.startDate).toLocaleDateString(undefined, {
-            weekday: "short",
-          });
-          const steps = Math.round(day.sumQuantity ?? 0).toLocaleString();
-          return `${date}: ${steps}`;
-        })
-        .join("\n");
-
-      Alert.alert("Weekly Steps", summary || "No data");
+      refetchToday();
+      refetchWeekly();
     } catch (err) {
       Alert.alert("Error", String(err));
     }
@@ -236,26 +227,160 @@ function StepsSection() {
       <View style={styles.statsContainer}>
         <Text style={styles.statsLabel}>Today</Text>
         <Text style={styles.statsValue}>
-          {isLoading ? "..." : todaySteps.toLocaleString()}
+          {todayLoading ? "..." : todaySteps.toLocaleString()}
         </Text>
         <Text style={styles.statsUnit}>steps</Text>
       </View>
 
-      {error && <Text style={styles.error}>{error.message}</Text>}
+      {todayError && <Text style={styles.error}>{todayError.message}</Text>}
 
       <View style={styles.buttonRow}>
-        <Button title="Refresh" onPress={refetch} />
+        <Button title="Refresh" onPress={() => { refetchToday(); refetchWeekly(); }} />
         <Button title="Add 100 Steps" onPress={saveSteps} />
       </View>
 
       <View style={styles.spacer} />
-      <Button title="View Weekly Steps" onPress={fetchWeeklySteps} />
+      <Button
+        title={showWeekly ? "Hide Weekly" : "Show Weekly"}
+        onPress={() => setShowWeekly(!showWeekly)}
+      />
+
+      {showWeekly && (
+        <View style={styles.weeklyContainer}>
+          {weeklyLoading ? (
+            <Text style={styles.emptyText}>Loading...</Text>
+          ) : weeklyData.length > 0 ? (
+            weeklyData.map((day, index) => (
+              <View key={index} style={styles.weeklyItem}>
+                <Text style={styles.weeklyDay}>
+                  {new Date(day.startDate).toLocaleDateString(undefined, {
+                    weekday: "short",
+                  })}
+                </Text>
+                <View style={styles.weeklyBar}>
+                  <View
+                    style={[
+                      styles.weeklyBarFill,
+                      {
+                        width: `${Math.min(100, ((day.sumQuantity ?? 0) / 10000) * 100)}%`,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.weeklySteps}>
+                  {Math.round(day.sumQuantity ?? 0).toLocaleString()}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No data for this week</Text>
+          )}
+        </View>
+      )}
     </Card>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. Activity Rings - Display the activity rings view
+// 5. Sleep - Query sleep analysis data using useHealthKitQuery
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SLEEP_STATES: Record<number, { label: string; color: string }> = {
+  0: { label: "In Bed", color: "#8E8E93" },
+  1: { label: "Asleep", color: "#5E5CE6" },
+  2: { label: "Awake", color: "#FF9F0A" },
+  3: { label: "Core", color: "#30D158" },
+  4: { label: "Deep", color: "#0A84FF" },
+  5: { label: "REM", color: "#BF5AF2" },
+};
+
+function SleepSection() {
+  // Query last 24 hours of sleep data using the hook
+  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const { data, isLoading, error, refetch } = useHealthKitQuery({
+    type: "sleepAnalysis",
+    kind: "category",
+    startDate: yesterday,
+    endDate: new Date(),
+    ascending: true,
+  });
+
+  // Process sleep samples
+  const sleepData = (data ?? []).map((sample) => {
+    const value = sample.__typename === "CategorySample" ? sample.value : 0;
+    const stateInfo = SLEEP_STATES[value] ?? { label: `Unknown (${value})`, color: "#666" };
+    const start = new Date(sample.startDate).getTime();
+    const end = new Date(sample.endDate).getTime();
+    const duration = Math.round((end - start) / 60000); // minutes
+
+    return {
+      state: stateInfo.label,
+      duration,
+      color: stateInfo.color,
+    };
+  });
+
+  // Calculate total sleep (exclude "In Bed" and "Awake")
+  const totalSleep = sleepData
+    .filter((s) => !["In Bed", "Awake"].includes(s.state))
+    .reduce((sum, s) => sum + s.duration, 0);
+
+  const formatDuration = (minutes: number) => {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hrs > 0) {
+      return `${hrs}h ${mins}m`;
+    }
+    return `${mins}m`;
+  };
+
+  return (
+    <Card title="Sleep Analysis">
+      <Text style={styles.description}>
+        View last night's sleep stages from Apple Watch or other sources.
+      </Text>
+
+      <Button
+        title={isLoading ? "Loading..." : "Refresh"}
+        onPress={refetch}
+        disabled={isLoading}
+      />
+
+      {error && <Text style={styles.error}>{error.message}</Text>}
+
+      {totalSleep > 0 && (
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsLabel}>Total Sleep</Text>
+          <Text style={[styles.statsValue, { color: "#5E5CE6" }]}>
+            {formatDuration(totalSleep)}
+          </Text>
+        </View>
+      )}
+
+      {sleepData.length > 0 && (
+        <View style={styles.sleepList}>
+          {sleepData.map((item, index) => (
+            <View key={index} style={styles.sleepItem}>
+              <View style={[styles.sleepDot, { backgroundColor: item.color }]} />
+              <Text style={styles.sleepState}>{item.state}</Text>
+              <Text style={styles.sleepDuration}>{formatDuration(item.duration)}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {sleepData.length === 0 && !isLoading && (
+        <Text style={styles.emptyText}>
+          No sleep data found. Sleep data requires an Apple Watch or compatible sleep tracking app.
+        </Text>
+      )}
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. Activity Rings - Display the activity rings view
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ActivityRingsSection() {
@@ -471,5 +596,68 @@ const styles = StyleSheet.create({
   },
   ringStats: {
     marginTop: 8,
+  },
+  sleepList: {
+    marginTop: 16,
+  },
+  sleepItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#e0e0e0",
+  },
+  sleepDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+  sleepState: {
+    flex: 1,
+    fontSize: 16,
+  },
+  sleepDuration: {
+    fontSize: 16,
+    color: "#666",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#999",
+    fontStyle: "italic",
+    marginTop: 16,
+    textAlign: "center",
+  },
+  weeklyContainer: {
+    marginTop: 16,
+  },
+  weeklyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  weeklyDay: {
+    width: 40,
+    fontSize: 14,
+    color: "#666",
+  },
+  weeklyBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: "#e0e0e0",
+    borderRadius: 4,
+    marginHorizontal: 8,
+    overflow: "hidden",
+  },
+  weeklyBarFill: {
+    height: "100%",
+    backgroundColor: "#007AFF",
+    borderRadius: 4,
+  },
+  weeklySteps: {
+    width: 60,
+    fontSize: 12,
+    color: "#666",
+    textAlign: "right",
   },
 });
