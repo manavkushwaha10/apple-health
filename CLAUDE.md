@@ -1,0 +1,208 @@
+
+Expo module for interacting with Apple HealthKit on Apple devices.
+
+- [ ] Marshalling-style API for reading and writing health data
+- [ ] Fantastic querying API. Consider APIs like Bun.sql https://bun.com/docs/runtime/sql and TanStack query.
+- [ ] HealthKit UI elements https://developer.apple.com/documentation/healthkitui
+- [ ] Config Plugin for setting up HealthKit permissions and entitlements
+- [ ] Permissions that follow Expo's permission model
+- [ ] Docs for usage and setup instructions
+- [ ] TypeScript typings for all methods and options
+- [ ] Debugging UI for interacting with data
+
+# Native iOS
+
+- ALWAYS use only Expo modules API.
+- Prefer Swift and Kotlin.
+- New Architecture only. NEVER support legacy React Native architecture.
+- Design native APIs as if you contributing W3C specs for the browser, take inspiration from modern web modules. eg `std:kv-storage`, `clipboard`.
+- Prefer string union types for API options instead of boolean flags, enums, or multiple parameters. eg instead of `capture(options: { isHighQuality: boolean })`, use `capture(options: { quality: 'high' | 'medium' | 'low' })`.
+- Use optionality for availability checks as opposed to extraneous `isAvailable` functions or constants. eg `snapshot.capture?.()` instead of `snapshot.isAvailable && snapshot.capture()`.
+
+Example of a GREAT Expo module:
+
+```ts
+import { NativeModule, requireOptionalNativeModule } from "expo";
+
+declare class AppClipModule extends NativeModule<{}> {
+  prompt(): void;
+  isAppClip?: boolean;
+}
+
+// This call loads the native module object from the JSI.
+const AppClipNative = requireOptionalNativeModule<AppClipModule>("AppClip");
+
+if (AppClipNative?.isAppClip) {
+  navigator.appClip = {
+    prompt: AppClipNative.prompt,
+  };
+}
+
+// Add types for the global `navigator.appClip` object.
+declare global {
+  interface Navigator {
+    /**
+     * Only available in an App Clip context.
+     * @expo
+     */
+    appClip?: {
+      /** Open the SKOverlay */
+      prompt: () => void;
+    };
+  }
+}
+
+export {};
+```
+
+- Simple web-style interface.
+- Global type augmentation for easy access.
+- Docs in the type definitions.
+- Optional availability checks instead of extraneous `isAvailable` methods.
+
+
+## Views
+
+Prefer functions on views instead of `useImperativeHandle` + `findNodeHandle`.
+
+```swift
+AsyncFunction("capture") { (view, options: Options) -> Ref in
+  return try capture(self.appContext, view)
+}
+```
+
+## Marshalling-style API
+
+Consider this example https://github.com/EvanBacon/expo-shared-objects-haptics-example/blob/be90e92f8dba9b0807009502ab25c423c57e640d/modules/my-module/ios/MyModule.swift#L1C1-L178C2
+
+Using `@retroactive Convertible` and `AnyArgument` to convert between Swift types and dictionaries enables passing complex data structures across the boundary without writing custom serialization code for each type.
+
+
+```swift
+extension CHHapticEventParameter: @retroactive Convertible, AnyArgument {
+    public static func convert(from value: Any?, appContext: AppContext) throws -> Self {
+        guard let dict = value as? [String: Any],
+              let parameterIDRaw = dict["parameterID"] as? String,
+              let value = dict["value"] as? Double else {
+            throw NotADictionaryException()
+        }
+        return Self(parameterID: CHHapticEvent.ParameterID(rawValue: parameterIDRaw), value: Float(value))
+    }
+}
+
+extension CHHapticEvent: @retroactive Convertible, AnyArgument {
+    public static func convert(from value: Any?, appContext: AppContext) throws -> Self {
+        guard let dict = value as? [String: Any],
+              let eventTypeRaw = dict["eventType"] as? String,
+              let relativeTime = dict["relativeTime"] as? Double else {
+            throw NotADictionaryException()
+        }
+        let eventType = CHHapticEvent.EventType(rawValue: eventTypeRaw)
+        let parameters = (dict["parameters"] as? [[String: Any]])?.compactMap { paramDict -> CHHapticEventParameter? in
+            try? CHHapticEventParameter.convert(from: paramDict, appContext: appContext)
+        } ?? []
+        return Self(eventType: eventType, parameters: parameters, relativeTime: relativeTime)
+    }
+}
+
+extension CHHapticDynamicParameter: @retroactive Convertible, AnyArgument {
+    public static func convert(from value: Any?, appContext: AppContext) throws -> Self {
+        guard let dict = value as? [String: Any],
+              let parameterIDRaw = dict["parameterID"] as? String,
+              let value = dict["value"] as? Double,
+              let relativeTime = dict["relativeTime"] as? Double else {
+            throw NotADictionaryException()
+        }
+        
+        return Self(parameterID: CHHapticDynamicParameter.ID(rawValue: parameterIDRaw), value: Float(value), relativeTime: relativeTime)
+    }
+}
+
+extension CHHapticPattern: @retroactive Convertible, AnyArgument {
+    public static func convert(from value: Any?, appContext: AppContext) throws -> Self {
+        guard let dict = value as? [String: Any],
+              let eventsArray = dict["events"] as? [[String: Any]] else {
+            throw NotADictionaryException()
+        }
+        let events = try eventsArray.map { eventDict -> CHHapticEvent in
+            try CHHapticEvent.convert(from: eventDict, appContext: appContext)
+        }
+        let parameters = (dict["parameters"] as? [[String: Any]])?.compactMap { paramDict -> CHHapticDynamicParameter? in
+            return try? CHHapticDynamicParameter.convert(from: paramDict, appContext: appContext)
+        } ?? []
+        return try Self(events: events, parameters: parameters)
+    }
+}
+
+internal final class NotAnArrayException: Exception {
+    override var reason: String {
+        "Given value is not an array"
+    }
+}
+
+internal final class IncorrectArraySizeException: GenericException<(expected: Int, actual: Int)> {
+    override var reason: String {
+        "Given array has unexpected number of elements: \(param.actual), expected: \(param.expected)"
+    }
+}
+
+internal final class NotADictionaryException: Exception {
+    override var reason: String {
+        "Given value is not a dictionary"
+    }
+}
+
+```
+
+Later this can be used to implement methods that accept complex data structures as arguments.
+
+```swift
+Function("playPattern") { (pattern: CHHapticPattern) in
+    let player = try hapticEngine.makePlayer(with: pattern)
+    try player.start(atTime: 0)
+}
+```
+
+## Interacting with AppDelegate 
+
+To interact with HealthKit, the module may need to respond to app lifecycle events. This can be done by implementing the `ExpoAppDelegateSubscriber` protocol.
+
+```swift
+import ExpoModulesCore
+
+public class ExpoHeadAppDelegateSubscriber: ExpoAppDelegateSubscriber {
+
+// Any AppDelegate methods you want to implement
+  public func application(
+    _ application: UIApplication,
+    continue userActivity: NSUserActivity,
+    restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
+  ) -> Bool {
+    launchedActivity = userActivity
+
+   // ...
+
+    return false
+  }
+}
+```
+
+Then add the subscriber to the `expo-module.config.json`:
+
+```json
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["ExpoHeadModule", ...],
+    "appDelegateSubscribers": ["ExpoHeadAppDelegateSubscriber"]
+  }
+}
+```
+
+
+## References
+
+- https://developer.apple.com/documentation/healthkit/data-types
+- https://developer.apple.com/documentation/healthkit/accessing-sample-data-in-the-simulator
+- https://developer.apple.com/documentation/healthkit
+- https://developer.apple.com/documentation/healthkit/protecting-user-privacy
