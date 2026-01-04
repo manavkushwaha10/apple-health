@@ -123,6 +123,140 @@ public class AppleHealthModule: Module {
       Function("release") { (query: HealthKitQuery) in
         query.release()
       }
+
+      AsyncFunction("executeSamples") { (query: HealthKitQuery) -> [HealthKitSample] in
+        return try await query.executeSamples()
+      }
+    }
+
+    Class(QuantitySampleObject.self) {
+      Property("uuid") { (sample: QuantitySampleObject) in sample.uuid }
+      Property("quantityType") { (sample: QuantitySampleObject) in sample.quantityType }
+      Property("value") { (sample: QuantitySampleObject) in sample.value }
+      Property("unit") { (sample: QuantitySampleObject) in sample.unit }
+      Property("startDate") { (sample: QuantitySampleObject) in sample.startDate }
+      Property("endDate") { (sample: QuantitySampleObject) in sample.endDate }
+      Property("sourceName") { (sample: QuantitySampleObject) in sample.sourceName }
+      Property("sourceId") { (sample: QuantitySampleObject) in sample.sourceId }
+      Property("device") { (sample: QuantitySampleObject) in sample.device }
+      Property("metadata") { (sample: QuantitySampleObject) in sample.metadata }
+
+      AsyncFunction("delete") { (sample: QuantitySampleObject) -> Bool in
+        return try await sample.delete()
+      }
+
+      Function("toJSON") { (sample: QuantitySampleObject) -> [String: Any] in
+        return sample.toJSON()
+      }
+    }
+
+    Class(CategorySampleObject.self) {
+      Property("uuid") { (sample: CategorySampleObject) in sample.uuid }
+      Property("categoryType") { (sample: CategorySampleObject) in sample.categoryType }
+      Property("value") { (sample: CategorySampleObject) in sample.value }
+      Property("startDate") { (sample: CategorySampleObject) in sample.startDate }
+      Property("endDate") { (sample: CategorySampleObject) in sample.endDate }
+      Property("sourceName") { (sample: CategorySampleObject) in sample.sourceName }
+      Property("sourceId") { (sample: CategorySampleObject) in sample.sourceId }
+      Property("metadata") { (sample: CategorySampleObject) in sample.metadata }
+
+      AsyncFunction("delete") { (sample: CategorySampleObject) -> Bool in
+        return try await sample.delete()
+      }
+
+      Function("toJSON") { (sample: CategorySampleObject) -> [String: Any] in
+        return sample.toJSON()
+      }
+    }
+
+    Class(WorkoutSampleObject.self) {
+      Property("uuid") { (sample: WorkoutSampleObject) in sample.uuid }
+      Property("workoutActivityType") { (sample: WorkoutSampleObject) in sample.workoutActivityType }
+      Property("duration") { (sample: WorkoutSampleObject) in sample.duration }
+      Property("totalEnergyBurned") { (sample: WorkoutSampleObject) in sample.totalEnergyBurned }
+      Property("totalDistance") { (sample: WorkoutSampleObject) in sample.totalDistance }
+      Property("startDate") { (sample: WorkoutSampleObject) in sample.startDate }
+      Property("endDate") { (sample: WorkoutSampleObject) in sample.endDate }
+      Property("sourceName") { (sample: WorkoutSampleObject) in sample.sourceName }
+      Property("sourceId") { (sample: WorkoutSampleObject) in sample.sourceId }
+      Property("metadata") { (sample: WorkoutSampleObject) in sample.metadata }
+
+      AsyncFunction("delete") { (sample: WorkoutSampleObject) -> Bool in
+        return try await sample.delete()
+      }
+
+      Function("toJSON") { (sample: WorkoutSampleObject) -> [String: Any] in
+        return sample.toJSON()
+      }
+    }
+
+    Class(HealthKitSubscription.self) {
+      Constructor {
+        return HealthKitSubscription()
+      }
+
+      Property("type") { (sub: HealthKitSubscription) in sub.type }
+      Property("isActive") { (sub: HealthKitSubscription) in sub.isActive }
+      Property("lastUpdate") { (sub: HealthKitSubscription) in sub.lastUpdate }
+
+      Function("start") { [weak self] (sub: HealthKitSubscription, typeIdentifier: String) in
+        try sub.start(typeIdentifier: typeIdentifier) { [weak self] in
+          self?.sendEvent("onHealthKitUpdate", [
+            "typeIdentifier": typeIdentifier,
+            "subscriptionId": ObjectIdentifier(sub).hashValue
+          ])
+        }
+      }
+
+      Function("pause") { (sub: HealthKitSubscription) in
+        sub.pause()
+      }
+
+      Function("resume") { (sub: HealthKitSubscription) in
+        sub.resume()
+      }
+
+      Function("unsubscribe") { (sub: HealthKitSubscription) in
+        sub.unsubscribe()
+      }
+
+      Function("getId") { (sub: HealthKitSubscription) -> Int in
+        return ObjectIdentifier(sub).hashValue
+      }
+    }
+
+    Class(HealthKitAnchor.self) {
+      Constructor {
+        return HealthKitAnchor()
+      }
+
+      Property("type") { (anchor: HealthKitAnchor) in anchor.type }
+      Property("kind") { (anchor: HealthKitAnchor) in anchor.kind }
+      Property("hasMore") { (anchor: HealthKitAnchor) in anchor.hasMore }
+
+      Function("configure") { (anchor: HealthKitAnchor, typeIdentifier: String, kind: String) in
+        anchor.configure(typeIdentifier: typeIdentifier, kind: kind)
+      }
+
+      Function("restore") { (anchor: HealthKitAnchor, serialized: String) -> Bool in
+        return anchor.restore(from: serialized)
+      }
+
+      Function("serialize") { (anchor: HealthKitAnchor) -> String? in
+        return anchor.serialize()
+      }
+
+      Function("reset") { (anchor: HealthKitAnchor) in
+        anchor.reset()
+      }
+
+      AsyncFunction("fetchNext") { (anchor: HealthKitAnchor, limit: Int) -> [String: Any] in
+        return try await anchor.fetchNext(limit: limit)
+      }
+
+      AsyncFunction("fetchNextSamples") { (anchor: HealthKitAnchor, limit: Int) -> [String: Any] in
+        return try await anchor.fetchNextSamples(limit: limit)
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

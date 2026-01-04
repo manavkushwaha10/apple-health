@@ -34,8 +34,9 @@ This package includes a CLI for querying and writing HealthKit data during devel
 ### Quick Start
 
 1. Enable devtools in your app:
+
    ```tsx
-   import { useHealthKitDevTools } from 'apple-health';
+   import { useHealthKitDevTools } from "apple-health/dev-tools";
 
    export default function App() {
      useHealthKitDevTools();
@@ -44,6 +45,7 @@ This package includes a CLI for querying and writing HealthKit data during devel
    ```
 
 2. Run CLI commands:
+
    ```bash
    # Check connection
    bunx apple-health status

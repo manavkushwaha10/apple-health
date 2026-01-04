@@ -3,13 +3,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   QuantityTypeIdentifier,
   CategoryTypeIdentifier,
-  QuantitySample,
-  CategorySample,
-  WorkoutSample,
+  QuantitySample as QuantitySampleRecord,
+  CategorySample as CategorySampleRecord,
+  WorkoutSample as WorkoutSampleRecord,
   StatisticsResult,
   StatisticsAggregation,
 } from '../AppleHealth.types';
 import { HealthKitQuery, IntervalUnit } from '../HealthKitQuery';
+import type { HealthKitSample } from '../HealthKitSample';
 
 export interface UseHealthKitQueryConfig {
   /** The HealthKit type identifier */
@@ -66,7 +67,7 @@ export interface UseHealthKitQueryResult<T> {
  * ```
  */
 export function useHealthKitQuery<
-  T extends QuantitySample | CategorySample | WorkoutSample = QuantitySample
+  T extends QuantitySampleRecord | CategorySampleRecord | WorkoutSampleRecord = QuantitySampleRecord
 >(config: UseHealthKitQueryConfig): UseHealthKitQueryResult<T> {
   const [data, setData] = useState<T[] | null>(null);
   const [isLoading, setIsLoading] = useState(!config.skip);
@@ -361,4 +362,120 @@ export function useHealthKitStatisticsCollection(
   }, [fetch, config.skip]);
 
   return { data, isLoading, error, refetch: fetch };
+}
+
+export interface UseHealthKitSamplesResult {
+  /** The fetched sample objects with methods like delete() */
+  data: HealthKitSample[] | null;
+  /** Loading state */
+  isLoading: boolean;
+  /** Error if the query failed */
+  error: Error | null;
+  /** Refetch the data */
+  refetch: () => Promise<void>;
+  /** Delete a sample and remove it from the data array */
+  deleteSample: (sample: HealthKitSample) => Promise<void>;
+}
+
+/**
+ * React hook for querying HealthKit samples as shared objects.
+ *
+ * Unlike `useHealthKitQuery`, this returns sample objects with methods
+ * like `delete()` that operate on the native HKSample.
+ *
+ * @example
+ * ```tsx
+ * function ManageSamples() {
+ *   const { data, deleteSample } = useHealthKitSamples({
+ *     type: 'stepCount',
+ *     startDate: weekAgo,
+ *     limit: 50,
+ *   });
+ *
+ *   return (
+ *     <FlatList
+ *       data={data}
+ *       renderItem={({ item }) => (
+ *         <View>
+ *           <Text>{item.value} {item.unit}</Text>
+ *           <Button title="Delete" onPress={() => deleteSample(item)} />
+ *         </View>
+ *       )}
+ *     />
+ *   );
+ * }
+ * ```
+ */
+export function useHealthKitSamples(
+  config: UseHealthKitQueryConfig
+): UseHealthKitSamplesResult {
+  const [data, setData] = useState<HealthKitSample[] | null>(null);
+  const [isLoading, setIsLoading] = useState(!config.skip);
+  const [error, setError] = useState<Error | null>(null);
+
+  const queryRef = useRef<HealthKitQuery | null>(null);
+
+  const configKey = useMemo(
+    () =>
+      JSON.stringify({
+        type: config.type,
+        kind: config.kind,
+        startDate: config.startDate?.toString(),
+        endDate: config.endDate?.toString(),
+        limit: config.limit,
+        ascending: config.ascending,
+      }),
+    [config.type, config.kind, config.startDate, config.endDate, config.limit, config.ascending]
+  );
+
+  const fetch = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (queryRef.current) {
+        queryRef.current.release();
+      }
+
+      const kind = config.kind ?? (config.type === 'workout' ? 'workout' : 'quantity');
+      const query = new HealthKitQuery()
+        .type(config.type, kind)
+        .dateRange(config.startDate, config.endDate)
+        .ascending(config.ascending ?? false);
+
+      if (config.limit !== undefined) {
+        query.limit(config.limit);
+      }
+
+      queryRef.current = query;
+
+      const results = await query.executeSamples();
+      setData(results);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+      setData(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [configKey]);
+
+  const deleteSample = useCallback(async (sample: HealthKitSample) => {
+    await sample.delete();
+    setData((prev) => prev?.filter((s) => s.uuid !== sample.uuid) ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (!config.skip) {
+      fetch();
+    }
+
+    return () => {
+      if (queryRef.current) {
+        queryRef.current.release();
+        queryRef.current = null;
+      }
+    };
+  }, [fetch, config.skip]);
+
+  return { data, isLoading, error, refetch: fetch, deleteSample };
 }

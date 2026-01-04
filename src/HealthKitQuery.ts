@@ -3,12 +3,13 @@ import { requireNativeModule } from 'expo';
 import type {
   QuantityTypeIdentifier,
   CategoryTypeIdentifier,
-  QuantitySample,
-  CategorySample,
-  WorkoutSample,
+  QuantitySample as QuantitySampleRecord,
+  CategorySample as CategorySampleRecord,
+  WorkoutSample as WorkoutSampleRecord,
   StatisticsResult,
   StatisticsAggregation,
 } from './AppleHealth.types';
+import { wrapNativeSamples, type HealthKitSample } from './HealthKitSample';
 
 // Native shared object interface
 interface NativeHealthKitQuery {
@@ -19,6 +20,7 @@ interface NativeHealthKitQuery {
   setAggregations(aggregations: string[]): void;
   setInterval(interval: string): void;
   execute(): Promise<Record<string, unknown>[]>;
+  executeSamples(): Promise<unknown[]>;
   executeStatistics(): Promise<Record<string, unknown> | Record<string, unknown>[]>;
   release(): void;
 }
@@ -159,13 +161,37 @@ export class HealthKitQuery {
   }
 
   /**
-   * Execute the query and return samples.
+   * Execute the query and return plain object samples.
+   * Use `executeSamples()` if you need sample objects with methods like `delete()`.
    *
-   * @returns Array of samples (type depends on query kind)
+   * @returns Array of plain sample records
    */
-  async execute(): Promise<QuantitySample[] | CategorySample[] | WorkoutSample[]> {
+  async execute(): Promise<QuantitySampleRecord[] | CategorySampleRecord[] | WorkoutSampleRecord[]> {
     const results = await this.native.execute();
-    return results as QuantitySample[] | CategorySample[] | WorkoutSample[];
+    return results as unknown as QuantitySampleRecord[] | CategorySampleRecord[] | WorkoutSampleRecord[];
+  }
+
+  /**
+   * Execute the query and return sample objects with methods.
+   * These are shared objects that maintain a reference to the native HKSample.
+   *
+   * @returns Array of sample objects with `delete()` and `toJSON()` methods
+   *
+   * @example
+   * ```ts
+   * const samples = await query.executeSamples();
+   * for (const sample of samples) {
+   *   if (sample instanceof QuantitySample) {
+   *     console.log(`${sample.value} ${sample.unit}`);
+   *   }
+   *   // Delete samples you don't need
+   *   await sample.delete();
+   * }
+   * ```
+   */
+  async executeSamples(): Promise<HealthKitSample[]> {
+    const natives = await this.native.executeSamples();
+    return wrapNativeSamples(natives);
   }
 
   /**
@@ -175,7 +201,7 @@ export class HealthKitQuery {
    */
   async executeStatistics(): Promise<StatisticsResult | StatisticsResult[]> {
     const results = await this.native.executeStatistics();
-    return results as StatisticsResult | StatisticsResult[];
+    return results as unknown as StatisticsResult | StatisticsResult[];
   }
 
   /**

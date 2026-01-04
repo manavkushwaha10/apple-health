@@ -477,5 +477,5 @@ ws.onmessage = (e) => console.log("Received:", e.data);
 See the HealthKit CLI in this repo:
 
 - `cli/` - Full CLI implementation
-- `src/devtools/useHealthKitDevTools.ts` - App-side hook
+- `src/dev-tools/useHealthKitDevTools.ts` - App-side hook
 - `example/App.tsx` - Hook usage in app

@@ -1,9 +1,7 @@
 import { useEvent } from "expo";
-import AppleHealth, {
-  ActivityRingView,
-  ActivitySummary,
-  useHealthKitDevTools,
-} from "apple-health";
+import AppleHealth, { ActivityRingView, ActivitySummary } from "apple-health";
+import { useHealthKitDevTools } from "apple-health/dev-tools";
+import { useHealthKitQuery } from "apple-health/hooks";
 import { useState } from "react";
 import {
   Button,

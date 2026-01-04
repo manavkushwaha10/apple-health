@@ -95,6 +95,117 @@ public final class HealthKitQuery: SharedObject {
     // Reserved for future caching implementation
   }
 
+  /// Execute the query and return shared object samples (with delete() method)
+  func executeSamples() async throws -> [HealthKitSample] {
+    guard let store = getHealthStore() else {
+      throw HealthKitNotAvailableException()
+    }
+
+    switch queryKind {
+    case .quantity:
+      return try await executeQuantitySamples(store: store)
+    case .category:
+      return try await executeCategorySamples(store: store)
+    case .workout:
+      return try await executeWorkoutSamples(store: store)
+    case .statistics, .statisticsCollection:
+      throw GenericHealthKitException("Use executeStatistics() for statistics queries")
+    }
+  }
+
+  // MARK: - Private Sample Query Implementations (return shared objects)
+
+  private func executeQuantitySamples(store: HKHealthStore) async throws -> [HealthKitSample] {
+    guard let typeId = typeIdentifier,
+          let quantityType = TypeIdentifiers.quantityType(for: typeId) else {
+      throw InvalidTypeIdentifierException(typeIdentifier ?? "nil")
+    }
+
+    let predicate = createPredicate()
+    let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: ascendingValue)
+    let limit = limitValue
+
+    return try await withCheckedThrowingContinuation { continuation in
+      let query = HKSampleQuery(
+        sampleType: quantityType,
+        predicate: predicate,
+        limit: limit,
+        sortDescriptors: [sortDescriptor]
+      ) { _, samples, error in
+        if let error = error {
+          continuation.resume(throwing: error)
+          return
+        }
+
+        let results = (samples as? [HKQuantitySample])?.map { sample in
+          QuantitySampleObject.create(from: sample, typeIdentifier: typeId) as HealthKitSample
+        } ?? []
+
+        continuation.resume(returning: results)
+      }
+      store.execute(query)
+    }
+  }
+
+  private func executeCategorySamples(store: HKHealthStore) async throws -> [HealthKitSample] {
+    guard let typeId = typeIdentifier,
+          let categoryType = TypeIdentifiers.categoryType(for: typeId) else {
+      throw InvalidTypeIdentifierException(typeIdentifier ?? "nil")
+    }
+
+    let predicate = createPredicate()
+    let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: ascendingValue)
+    let limit = limitValue
+
+    return try await withCheckedThrowingContinuation { continuation in
+      let query = HKSampleQuery(
+        sampleType: categoryType,
+        predicate: predicate,
+        limit: limit,
+        sortDescriptors: [sortDescriptor]
+      ) { _, samples, error in
+        if let error = error {
+          continuation.resume(throwing: error)
+          return
+        }
+
+        let results = (samples as? [HKCategorySample])?.map { sample in
+          CategorySampleObject.create(from: sample, typeIdentifier: typeId) as HealthKitSample
+        } ?? []
+
+        continuation.resume(returning: results)
+      }
+      store.execute(query)
+    }
+  }
+
+  private func executeWorkoutSamples(store: HKHealthStore) async throws -> [HealthKitSample] {
+    let predicate = createPredicate()
+    let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: ascendingValue)
+    let limit = limitValue
+
+    return try await withCheckedThrowingContinuation { continuation in
+      let query = HKSampleQuery(
+        sampleType: HKObjectType.workoutType(),
+        predicate: predicate,
+        limit: limit,
+        sortDescriptors: [sortDescriptor]
+      ) { _, samples, error in
+        if let error = error {
+          continuation.resume(throwing: error)
+          return
+        }
+
+        let results = (samples as? [HKWorkout])?.map { workout in
+          WorkoutSampleObject.create(from: workout) as HealthKitSample
+        } ?? []
+
+        continuation.resume(returning: results)
+      }
+      store.execute(query)
+    }
+  }
+
   // MARK: - Private Query Implementations
 
   private func executeQuantityQuery(store: HKHealthStore) async throws -> [[String: Any]] {

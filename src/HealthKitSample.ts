@@ -1,0 +1,257 @@
+import type {
+  QuantityTypeIdentifier,
+  CategoryTypeIdentifier,
+  WorkoutActivityType,
+  DeviceInfo,
+} from "./AppleHealth.types";
+
+/**
+ * Native shared object interface for samples
+ */
+interface NativeHealthKitSample {
+  readonly uuid: string;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly sourceName: string;
+  readonly sourceId: string;
+  readonly metadata: Record<string, unknown> | null;
+  delete(): Promise<boolean>;
+  toJSON(): Record<string, unknown>;
+}
+
+interface NativeQuantitySample extends NativeHealthKitSample {
+  readonly quantityType: string;
+  readonly value: number;
+  readonly unit: string;
+  readonly device: DeviceInfo | null;
+}
+
+interface NativeCategorySample extends NativeHealthKitSample {
+  readonly categoryType: string;
+  readonly value: number;
+}
+
+interface NativeWorkoutSample extends NativeHealthKitSample {
+  readonly workoutActivityType: string;
+  readonly duration: number;
+  readonly totalEnergyBurned: number | null;
+  readonly totalDistance: number | null;
+}
+
+/**
+ * Base class for HealthKit samples with common functionality.
+ * Holds a reference to the native HKSample for operations like delete.
+ */
+export abstract class HealthKitSampleBase {
+  protected native: NativeHealthKitSample;
+
+  constructor(native: NativeHealthKitSample) {
+    this.native = native;
+  }
+
+  /** Unique identifier for this sample */
+  get uuid(): string {
+    return this.native.uuid;
+  }
+
+  /** Start date of the sample (ISO8601 string) */
+  get startDate(): string {
+    return this.native.startDate;
+  }
+
+  /** End date of the sample (ISO8601 string) */
+  get endDate(): string {
+    return this.native.endDate;
+  }
+
+  /** Name of the source app that created this sample */
+  get sourceName(): string {
+    return this.native.sourceName;
+  }
+
+  /** Bundle identifier of the source app */
+  get sourceId(): string {
+    return this.native.sourceId;
+  }
+
+  /** Optional metadata associated with this sample */
+  get metadata(): Record<string, unknown> | null {
+    return this.native.metadata;
+  }
+
+  /**
+   * Delete this sample from HealthKit.
+   * Requires write authorization for this sample type.
+   *
+   * @returns true if deletion was successful
+   * @throws Error if deletion fails or sample was created by another app
+   */
+  async delete(): Promise<boolean> {
+    return this.native.delete();
+  }
+
+  /**
+   * Convert to a plain object for serialization.
+   */
+  toJSON(): Record<string, unknown> {
+    return this.native.toJSON();
+  }
+}
+
+/**
+ * A quantity sample from HealthKit (steps, heart rate, distance, etc.)
+ *
+ * @example
+ * ```ts
+ * const samples = await query.executeSamples();
+ * for (const sample of samples) {
+ *   console.log(`${sample.value} ${sample.unit} at ${sample.startDate}`);
+ *   // Delete a sample
+ *   await sample.delete();
+ * }
+ * ```
+ */
+export class QuantitySample extends HealthKitSampleBase {
+  constructor(native: NativeQuantitySample) {
+    super(native);
+  }
+
+  private get _native(): NativeQuantitySample {
+    return this.native as NativeQuantitySample;
+  }
+
+  /** The quantity type identifier (e.g., 'stepCount', 'heartRate') */
+  get quantityType(): QuantityTypeIdentifier {
+    return this._native.quantityType as QuantityTypeIdentifier;
+  }
+
+  /** The numeric value of this sample */
+  get value(): number {
+    return this._native.value;
+  }
+
+  /** The unit of measurement (e.g., 'count', 'count/min') */
+  get unit(): string {
+    return this._native.unit;
+  }
+
+  /** Device information if available */
+  get device(): DeviceInfo | null {
+    return this._native.device;
+  }
+}
+
+/**
+ * A category sample from HealthKit (sleep, symptoms, etc.)
+ *
+ * @example
+ * ```ts
+ * const sleepSamples = await query.executeSamples();
+ * for (const sample of sleepSamples) {
+ *   // Sleep values: 0 = inBed, 1 = asleepUnspecified, 2 = awake, etc.
+ *   console.log(`Sleep state: ${sample.value}`);
+ * }
+ * ```
+ */
+export class CategorySample extends HealthKitSampleBase {
+  constructor(native: NativeCategorySample) {
+    super(native);
+  }
+
+  private get _native(): NativeCategorySample {
+    return this.native as NativeCategorySample;
+  }
+
+  /** The category type identifier (e.g., 'sleepAnalysis') */
+  get categoryType(): CategoryTypeIdentifier {
+    return this._native.categoryType as CategoryTypeIdentifier;
+  }
+
+  /** The category value (enum-specific integer) */
+  get value(): number {
+    return this._native.value;
+  }
+}
+
+/**
+ * A workout sample from HealthKit
+ *
+ * @example
+ * ```ts
+ * const workouts = await query.executeSamples();
+ * for (const workout of workouts) {
+ *   console.log(`${workout.workoutActivityType}: ${workout.duration}s`);
+ *   if (workout.totalEnergyBurned) {
+ *     console.log(`Burned ${workout.totalEnergyBurned} kcal`);
+ *   }
+ * }
+ * ```
+ */
+export class WorkoutSample extends HealthKitSampleBase {
+  constructor(native: NativeWorkoutSample) {
+    super(native);
+  }
+
+  private get _native(): NativeWorkoutSample {
+    return this.native as NativeWorkoutSample;
+  }
+
+  /** The workout activity type (e.g., 'running', 'cycling') */
+  get workoutActivityType(): WorkoutActivityType {
+    return this._native.workoutActivityType as WorkoutActivityType;
+  }
+
+  /** Duration in seconds */
+  get duration(): number {
+    return this._native.duration;
+  }
+
+  /** Total energy burned in kilocalories, if available */
+  get totalEnergyBurned(): number | null {
+    return this._native.totalEnergyBurned;
+  }
+
+  /** Total distance in meters, if available */
+  get totalDistance(): number | null {
+    return this._native.totalDistance;
+  }
+}
+
+/**
+ * Union type for all sample types
+ */
+export type HealthKitSample = QuantitySample | CategorySample | WorkoutSample;
+
+/**
+ * Wraps a native sample object in the appropriate TypeScript class
+ * @internal
+ */
+export function wrapNativeSample(native: unknown): HealthKitSample {
+  const sample = native as NativeHealthKitSample & {
+    quantityType?: string;
+    categoryType?: string;
+    workoutActivityType?: string;
+  };
+
+  if ("quantityType" in sample && sample.quantityType) {
+    return new QuantitySample(sample as NativeQuantitySample);
+  }
+
+  if ("categoryType" in sample && sample.categoryType) {
+    return new CategorySample(sample as NativeCategorySample);
+  }
+
+  if ("workoutActivityType" in sample && sample.workoutActivityType) {
+    return new WorkoutSample(sample as NativeWorkoutSample);
+  }
+
+  throw new Error("Unknown sample type");
+}
+
+/**
+ * Wraps an array of native samples
+ * @internal
+ */
+export function wrapNativeSamples(natives: unknown[]): HealthKitSample[] {
+  return natives.map(wrapNativeSample);
+}

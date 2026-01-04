@@ -8,7 +8,7 @@ The CLI requires a running Expo app with the `useHealthKitDevTools` hook enabled
 
 ```bash
 # In your app
-import { useHealthKitDevTools } from 'apple-health';
+import { useHealthKitDevTools } from 'apple-health/dev-tools';
 
 export default function App() {
   useHealthKitDevTools();

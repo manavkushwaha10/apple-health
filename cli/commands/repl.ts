@@ -9,7 +9,7 @@ interface ReplFlags {
 }
 
 const HELP = `
-HealthKit REPL - Interactive health data shell
+Apple HealthKit REPL - Interactive health data shell
 
 Commands:
   write quantity <type> <value> [time]     Write quantity sample
@@ -276,7 +276,7 @@ async function startRepl(flags: ReplFlags): Promise<void> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: "healthkit> ",
+    prompt: "apple-health> ",
   });
 
   rl.prompt();
