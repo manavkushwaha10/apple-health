@@ -563,8 +563,10 @@ public class AppleHealthModule: Module {
       }
 
       let calendar = Calendar.current
-      let startComponents = calendar.dateComponents([.year, .month, .day], from: start)
-      let endComponents = calendar.dateComponents([.year, .month, .day], from: end)
+      var startComponents = calendar.dateComponents([.year, .month, .day], from: start)
+      var endComponents = calendar.dateComponents([.year, .month, .day], from: end)
+      startComponents.calendar = calendar
+      endComponents.calendar = calendar
 
       let predicate = HKQuery.predicate(forActivitySummariesBetweenStart: startComponents, end: endComponents)
 
