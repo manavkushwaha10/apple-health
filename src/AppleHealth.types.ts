@@ -440,7 +440,7 @@ export interface ActivitySummary {
   appleStandHoursGoal: number;
 }
 
-export interface AppleHealthModuleEvents {
+export type AppleHealthModuleEvents = {
   onHealthKitUpdate: (event: HealthKitUpdateEvent) => void;
   onBackgroundDelivery: (event: HealthKitUpdateEvent) => void;
-}
+};

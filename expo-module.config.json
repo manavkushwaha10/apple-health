@@ -2,5 +2,9 @@
   "platforms": ["apple"],
   "apple": {
     "modules": ["AppleHealthModule"]
+  },
+  "devtools": {
+    "name": "HealthKit",
+    "id": "healthkit"
   }
 }

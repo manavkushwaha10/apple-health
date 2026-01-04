@@ -4,6 +4,9 @@
   "description": "Apple HealthKit bindings",
   "main": "source/index.ts",
   "types": "build/index.d.ts",
+  "bin": {
+    "healthkit": "cli/index.ts"
+  },
   "scripts": {
     "build": "expo-module build",
     "clean": "expo-module clean",
@@ -13,7 +16,8 @@
     "prepublishOnly": "expo-module prepublishOnly",
     "expo-module": "expo-module",
     "open:ios": "xed example/ios",
-    "build:plugin": "tsc -p plugin"
+    "build:plugin": "tsc -p plugin",
+    "cli": "bun cli/index.ts"
   },
   "keywords": [
     "react-native",
@@ -29,7 +33,9 @@
   "author": "evanbacon <baconbrix@gmail.com> (EvanBacon)",
   "license": "MIT",
   "homepage": "https://github.com/EvanBacon/apple-health#readme",
-  "dependencies": {},
+  "dependencies": {
+    "@stricli/core": "^1.1.0"
+  },
   "devDependencies": {
     "@types/react": "~19.1.0",
     "expo-module-scripts": "^5.0.8",
