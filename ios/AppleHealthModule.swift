@@ -347,7 +347,7 @@ public class AppleHealthModule: Module {
     // ─────────────────────────────────────────────────────────────────────────────
 
     View(ActivityRingView.self) {
-      Prop("summary") { (view: ActivityRingView, summary: [String: Any]?) in
+      Prop("summary") { (view: ActivityRingView, summary: HKActivitySummary?) in
         view.setSummary(summary)
       }
     }
