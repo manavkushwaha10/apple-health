@@ -212,6 +212,12 @@ Function("playPattern") { (pattern: CHHapticPattern) in
 }
 ```
 
+Use shorthand where possible, especially when the JS value matches the Swift value:
+
+```swift
+Property("__typename") { $0.__typename }
+```
+
 ## Shared objects
 
 Shared objects are long-lived native instances that are shared to JS. They can be used to keep heavy state objects, such as a decoded bitmap, alive across React components, rather than spinning up a new native instance every time a component mounts.

@@ -88,127 +88,78 @@ public class AppleHealthModule: Module {
         return HealthKitQuery()
       }
 
-      Function("setType") { (query: HealthKitQuery, identifier: String, kind: String) in
-        query.setType(identifier, kind: kind)
-      }
-
-      Function("setDateRange") { (query: HealthKitQuery, start: String?, end: String?) in
-        query.setDateRange(start: start, end: end)
-      }
-
-      Function("setLimit") { (query: HealthKitQuery, limit: Int) in
-        query.setLimit(limit)
-      }
-
-      Function("setAscending") { (query: HealthKitQuery, ascending: Bool) in
-        query.setAscending(ascending)
-      }
-
-      Function("setAggregations") { (query: HealthKitQuery, aggregations: [String]) in
-        query.setAggregations(aggregations)
-      }
-
-      Function("setInterval") { (query: HealthKitQuery, interval: String) in
-        query.setInterval(interval)
-      }
-
-      AsyncFunction("execute") { (query: HealthKitQuery) -> [[String: Any]] in
-        return try await query.execute()
-      }
-
-      AsyncFunction("executeStatistics") { (query: HealthKitQuery) -> Any in
-        return try await query.executeStatistics()
-      }
-
-      Function("release") { (query: HealthKitQuery) in
-        query.release()
-      }
-
-      AsyncFunction("executeSamples") { (query: HealthKitQuery) -> [HealthKitSample] in
-        return try await query.executeSamples()
-      }
+      Function("setType") { $0.setType($1, kind: $2) }
+      Function("setDateRange") { $0.setDateRange(start: $1, end: $2) }
+      Function("setLimit") { $0.setLimit($1) }
+      Function("setAscending") { $0.setAscending($1) }
+      Function("setAggregations") { $0.setAggregations($1) }
+      Function("setInterval") { $0.setInterval($1) }
+      AsyncFunction("execute") { try await $0.execute() }
+      AsyncFunction("executeStatistics") { try await $0.executeStatistics() }
+      Function("release") { $0.release() }
+      AsyncFunction("executeSamples") { try await $0.executeSamples() }
     }
 
     // Base class definition - enables polymorphic return types
     Class(HealthKitSample.self) {
-      Property("uuid") { (sample: HealthKitSample) in sample.uuid }
-      Property("startDate") { (sample: HealthKitSample) in sample.startDate }
-      Property("endDate") { (sample: HealthKitSample) in sample.endDate }
-      Property("sourceName") { (sample: HealthKitSample) in sample.sourceName }
-      Property("sourceId") { (sample: HealthKitSample) in sample.sourceId }
-      Property("metadata") { (sample: HealthKitSample) in sample.metadata }
+      Property("uuid") { $0.uuid }
+      Property("startDate") { $0.startDate }
+      Property("endDate") { $0.endDate }
+      Property("sourceName") { $0.sourceName }
+      Property("sourceId") { $0.sourceId }
+      Property("metadata") { $0.metadata }
 
-      AsyncFunction("delete") { (sample: HealthKitSample) -> Bool in
-        return try await sample.delete()
-      }
-
-      Function("toJSON") { (sample: HealthKitSample) -> [String: Any] in
-        return sample.toJSON()
-      }
+      AsyncFunction("delete") { try await $0.delete() }
+      Function("toJSON") { $0.toJSON() }
     }
 
     Class(QuantitySampleObject.self) {
-      Property("__typename") { (sample: QuantitySampleObject) in sample.__typename }
-      Property("uuid") { (sample: QuantitySampleObject) in sample.uuid }
-      Property("quantityType") { (sample: QuantitySampleObject) in sample.quantityType }
-      Property("value") { (sample: QuantitySampleObject) in sample.value }
-      Property("unit") { (sample: QuantitySampleObject) in sample.unit }
-      Property("startDate") { (sample: QuantitySampleObject) in sample.startDate }
-      Property("endDate") { (sample: QuantitySampleObject) in sample.endDate }
-      Property("sourceName") { (sample: QuantitySampleObject) in sample.sourceName }
-      Property("sourceId") { (sample: QuantitySampleObject) in sample.sourceId }
-      Property("device") { (sample: QuantitySampleObject) in sample.device }
-      Property("metadata") { (sample: QuantitySampleObject) in sample.metadata }
+      Property("__typename") { $0.__typename }
+      Property("uuid") { $0.uuid }
+      Property("quantityType") { $0.quantityType }
+      Property("value") { $0.value }
+      Property("unit") { $0.unit }
+      Property("startDate") { $0.startDate }
+      Property("endDate") { $0.endDate }
+      Property("sourceName") { $0.sourceName }
+      Property("sourceId") { $0.sourceId }
+      Property("device") { $0.device }
+      Property("metadata") { $0.metadata }
 
-      AsyncFunction("delete") { (sample: QuantitySampleObject) -> Bool in
-        return try await sample.delete()
-      }
-
-      Function("toJSON") { (sample: QuantitySampleObject) -> [String: Any] in
-        return sample.toJSON()
-      }
+      AsyncFunction("delete") { try await $0.delete() }
+      Function("toJSON") { $0.toJSON() }
     }
 
     Class(CategorySampleObject.self) {
-      Property("__typename") { (sample: CategorySampleObject) in sample.__typename }
-      Property("uuid") { (sample: CategorySampleObject) in sample.uuid }
-      Property("categoryType") { (sample: CategorySampleObject) in sample.categoryType }
-      Property("value") { (sample: CategorySampleObject) in sample.value }
-      Property("startDate") { (sample: CategorySampleObject) in sample.startDate }
-      Property("endDate") { (sample: CategorySampleObject) in sample.endDate }
-      Property("sourceName") { (sample: CategorySampleObject) in sample.sourceName }
-      Property("sourceId") { (sample: CategorySampleObject) in sample.sourceId }
-      Property("metadata") { (sample: CategorySampleObject) in sample.metadata }
+      Property("__typename") { $0.__typename }
+      Property("uuid") { $0.uuid }
+      Property("categoryType") { $0.categoryType }
+      Property("value") { $0.value }
+      Property("startDate") { $0.startDate }
+      Property("endDate") { $0.endDate }
+      Property("sourceName") { $0.sourceName }
+      Property("sourceId") { $0.sourceId }
+      Property("metadata") { $0.metadata }
 
-      AsyncFunction("delete") { (sample: CategorySampleObject) -> Bool in
-        return try await sample.delete()
-      }
-
-      Function("toJSON") { (sample: CategorySampleObject) -> [String: Any] in
-        return sample.toJSON()
-      }
+      AsyncFunction("delete") { try await $0.delete() }
+      Function("toJSON") { $0.toJSON() }
     }
 
     Class(WorkoutSampleObject.self) {
-      Property("__typename") { (sample: WorkoutSampleObject) in sample.__typename }
-      Property("uuid") { (sample: WorkoutSampleObject) in sample.uuid }
-      Property("workoutActivityType") { (sample: WorkoutSampleObject) in sample.workoutActivityType }
-      Property("duration") { (sample: WorkoutSampleObject) in sample.duration }
-      Property("totalEnergyBurned") { (sample: WorkoutSampleObject) in sample.totalEnergyBurned }
-      Property("totalDistance") { (sample: WorkoutSampleObject) in sample.totalDistance }
-      Property("startDate") { (sample: WorkoutSampleObject) in sample.startDate }
-      Property("endDate") { (sample: WorkoutSampleObject) in sample.endDate }
-      Property("sourceName") { (sample: WorkoutSampleObject) in sample.sourceName }
-      Property("sourceId") { (sample: WorkoutSampleObject) in sample.sourceId }
-      Property("metadata") { (sample: WorkoutSampleObject) in sample.metadata }
+      Property("__typename") { $0.__typename }
+      Property("uuid") { $0.uuid }
+      Property("workoutActivityType") { $0.workoutActivityType }
+      Property("duration") { $0.duration }
+      Property("totalEnergyBurned") { $0.totalEnergyBurned }
+      Property("totalDistance") { $0.totalDistance }
+      Property("startDate") { $0.startDate }
+      Property("endDate") { $0.endDate }
+      Property("sourceName") { $0.sourceName }
+      Property("sourceId") { $0.sourceId }
+      Property("metadata") { $0.metadata }
 
-      AsyncFunction("delete") { (sample: WorkoutSampleObject) -> Bool in
-        return try await sample.delete()
-      }
-
-      Function("toJSON") { (sample: WorkoutSampleObject) -> [String: Any] in
-        return sample.toJSON()
-      }
+      AsyncFunction("delete") { try await $0.delete() }
+      Function("toJSON") { $0.toJSON() }
     }
 
     Class(HealthKitSubscription.self) {
@@ -216,9 +167,9 @@ public class AppleHealthModule: Module {
         return HealthKitSubscription()
       }
 
-      Property("type") { (sub: HealthKitSubscription) in sub.type }
-      Property("isActive") { (sub: HealthKitSubscription) in sub.isActive }
-      Property("lastUpdate") { (sub: HealthKitSubscription) in sub.lastUpdate }
+      Property("type") { $0.type }
+      Property("isActive") { $0.isActive }
+      Property("lastUpdate") { $0.lastUpdate }
 
       Function("start") { [weak self] (sub: HealthKitSubscription, typeIdentifier: String) in
         try sub.start(typeIdentifier: typeIdentifier) { [weak self] in
@@ -229,21 +180,10 @@ public class AppleHealthModule: Module {
         }
       }
 
-      Function("pause") { (sub: HealthKitSubscription) in
-        sub.pause()
-      }
-
-      Function("resume") { (sub: HealthKitSubscription) in
-        sub.resume()
-      }
-
-      Function("unsubscribe") { (sub: HealthKitSubscription) in
-        sub.unsubscribe()
-      }
-
-      Function("getId") { (sub: HealthKitSubscription) -> Int in
-        return ObjectIdentifier(sub).hashValue
-      }
+      Function("pause") { $0.pause() }
+      Function("resume") { $0.resume() }
+      Function("unsubscribe") { $0.unsubscribe() }
+      Function("getId") { ObjectIdentifier($0).hashValue }
     }
 
     Class(HealthKitAnchor.self) {
@@ -251,33 +191,16 @@ public class AppleHealthModule: Module {
         return HealthKitAnchor()
       }
 
-      Property("type") { (anchor: HealthKitAnchor) in anchor.type }
-      Property("kind") { (anchor: HealthKitAnchor) in anchor.kind }
-      Property("hasMore") { (anchor: HealthKitAnchor) in anchor.hasMore }
+      Property("type") { $0.type }
+      Property("kind") { $0.kind }
+      Property("hasMore") { $0.hasMore }
 
-      Function("configure") { (anchor: HealthKitAnchor, typeIdentifier: String, kind: String) in
-        anchor.configure(typeIdentifier: typeIdentifier, kind: kind)
-      }
-
-      Function("restore") { (anchor: HealthKitAnchor, serialized: String) -> Bool in
-        return anchor.restore(from: serialized)
-      }
-
-      Function("serialize") { (anchor: HealthKitAnchor) -> String? in
-        return anchor.serialize()
-      }
-
-      Function("reset") { (anchor: HealthKitAnchor) in
-        anchor.reset()
-      }
-
-      AsyncFunction("fetchNext") { (anchor: HealthKitAnchor, limit: Int) -> [String: Any] in
-        return try await anchor.fetchNext(limit: limit)
-      }
-
-      AsyncFunction("fetchNextSamples") { (anchor: HealthKitAnchor, limit: Int) -> [String: Any] in
-        return try await anchor.fetchNextSamples(limit: limit)
-      }
+      Function("configure") { $0.configure(typeIdentifier: $1, kind: $2) }
+      Function("restore") { $0.restore(from: $1) }
+      Function("serialize") { $0.serialize() }
+      Function("reset") { $0.reset() }
+      AsyncFunction("fetchNext") { try await $0.fetchNext(limit: $1) }
+      AsyncFunction("fetchNextSamples") { try await $0.fetchNextSamples(limit: $1) }
     }
 
     Class(HealthKitSampleBuilder.self) {
@@ -285,61 +208,20 @@ public class AppleHealthModule: Module {
         return HealthKitSampleBuilder()
       }
 
-      Function("setQuantityType") { (builder: HealthKitSampleBuilder, identifier: String) in
-        builder.setQuantityType(identifier)
-      }
-
-      Function("setCategoryType") { (builder: HealthKitSampleBuilder, identifier: String) in
-        builder.setCategoryType(identifier)
-      }
-
-      Function("setWorkoutType") { (builder: HealthKitSampleBuilder, activityType: String) in
-        builder.setWorkoutType(activityType)
-      }
-
-      Function("setValue") { (builder: HealthKitSampleBuilder, value: Double) in
-        builder.setValue(value)
-      }
-
-      Function("setCategoryValue") { (builder: HealthKitSampleBuilder, value: Int) in
-        builder.setCategoryValue(value)
-      }
-
-      Function("setUnit") { (builder: HealthKitSampleBuilder, unit: String) in
-        builder.setUnit(unit)
-      }
-
-      Function("setStartDate") { (builder: HealthKitSampleBuilder, dateString: String) in
-        builder.setStartDate(dateString)
-      }
-
-      Function("setEndDate") { (builder: HealthKitSampleBuilder, dateString: String) in
-        builder.setEndDate(dateString)
-      }
-
-      Function("setMetadata") { (builder: HealthKitSampleBuilder, metadata: [String: Any]?) in
-        builder.setMetadata(metadata)
-      }
-
-      Function("setTotalEnergyBurned") { (builder: HealthKitSampleBuilder, value: Double) in
-        builder.setTotalEnergyBurned(value)
-      }
-
-      Function("setTotalDistance") { (builder: HealthKitSampleBuilder, value: Double) in
-        builder.setTotalDistance(value)
-      }
-
-      Function("reset") { (builder: HealthKitSampleBuilder) in
-        builder.reset()
-      }
-
-      AsyncFunction("save") { (builder: HealthKitSampleBuilder) -> [String: Any] in
-        return try await builder.save()
-      }
-
-      AsyncFunction("saveSample") { (builder: HealthKitSampleBuilder) -> HealthKitSample in
-        return try await builder.saveSample()
-      }
+      Function("setQuantityType") { $0.setQuantityType($1) }
+      Function("setCategoryType") { $0.setCategoryType($1) }
+      Function("setWorkoutType") { $0.setWorkoutType($1) }
+      Function("setValue") { $0.setValue($1) }
+      Function("setCategoryValue") { $0.setCategoryValue($1) }
+      Function("setUnit") { $0.setUnit($1) }
+      Function("setStartDate") { $0.setStartDate($1) }
+      Function("setEndDate") { $0.setEndDate($1) }
+      Function("setMetadata") { $0.setMetadata($1) }
+      Function("setTotalEnergyBurned") { $0.setTotalEnergyBurned($1) }
+      Function("setTotalDistance") { $0.setTotalDistance($1) }
+      Function("reset") { $0.reset() }
+      AsyncFunction("save") { try await $0.save() }
+      AsyncFunction("saveSample") { try await $0.saveSample() }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -347,9 +229,7 @@ public class AppleHealthModule: Module {
     // ─────────────────────────────────────────────────────────────────────────────
 
     View(ActivityRingView.self) {
-      Prop("summary") { (view: ActivityRingView, summary: HKActivitySummary?) in
-        view.setSummary(summary)
-      }
+      Prop("summary") { $0.setSummary($1) }
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
